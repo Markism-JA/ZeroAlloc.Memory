@@ -1,95 +1,43 @@
 using BenchmarkDotNet.Attributes;
-using Memory.Allocators;
 using Memory.Collections.FlatMap;
+using EntityState = Memory.Benchmark.Collections.MapBenchmarkFixture.EntityState;
 
 namespace Memory.Benchmark.Collections;
 
+/// <summary>
+/// Read-only and idempotent in-place mutation benchmarks for <see cref="FlatMap{TKey, TValue}"/>
+/// and <see cref="NativeFlatMap{TKey, TValue}"/> using <see cref="GlobalSetupAttribute"/> so
+/// BenchmarkDotNet auto-scales invocation counts without <see cref="IterationSetupAttribute"/> overhead.
+/// </summary>
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class FlatMapBenchmark
 {
-    public struct EntityState
-    {
-        public ulong EntityId;
-        public int Health;
-        public int Mana;
-        public float PosX;
-        public float PosY;
-        public float PosZ;
-    }
-
     [Params(10_000, 100_000)]
     public int KeyCount;
 
+    private MapBenchmarkFixture _fixture;
     private FlatMap<ulong, EntityState> _flatMap = null!;
     private NativeFlatMap<ulong, EntityState>* _nativeFlatMap;
     private Dictionary<ulong, EntityState> _managedDict = null!;
 
-    private ulong* _keys;
-    private ulong* _missingKeys;
-    private EntityState _sampleState;
-
     [GlobalSetup]
     public void GlobalSetup()
     {
-        _keys = (ulong*)HeapAllocator.Allocate(KeyCount * sizeof(ulong), 64);
-        _missingKeys = (ulong*)HeapAllocator.Allocate(KeyCount * sizeof(ulong), 64);
-
-        for (int i = 0; i < KeyCount; i++)
-        {
-            // SplitMix64 / Golden ratio sequence to test pseudo-random spread
-            _keys[i] = (ulong)(i + 1) * 0x9E3779B97F4A7C15UL;
-            _missingKeys[i] = ((ulong)(i + 1) * 0x9E3779B97F4A7C15UL) ^ 0x8000000000000000UL;
-        }
-
-        _sampleState = new EntityState
-        {
-            Health = 100,
-            Mana = 50,
-            PosX = 12.5f,
-            PosY = 0.0f,
-            PosZ = 44.2f,
-        };
+        _fixture.AllocateKeys(KeyCount);
+        _fixture.PopulateFlatMaps(KeyCount, out _flatMap, out _nativeFlatMap, out _managedDict);
     }
 
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        if (_keys != null)
-        {
-            HeapAllocator.Free(_keys);
-            _keys = null;
-        }
-
-        if (_missingKeys != null)
-        {
-            HeapAllocator.Free(_missingKeys);
-            _missingKeys = null;
-        }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        _flatMap = new FlatMap<ulong, EntityState>(KeyCount);
-        _nativeFlatMap = NativeFlatMap<ulong, EntityState>.Allocate(KeyCount);
-        _managedDict = new Dictionary<ulong, EntityState>(KeyCount);
-
-        for (int i = 0; i < KeyCount; i++)
-        {
-            _sampleState.EntityId = _keys[i];
-            _flatMap.TryAdd(_keys[i], in _sampleState);
-            _nativeFlatMap->TryAdd(_keys[i], in _sampleState);
-            _managedDict[_keys[i]] = _sampleState;
-        }
-    }
-
-    [IterationCleanup]
-    public void IterationCleanup()
-    {
         _flatMap.Dispose();
-        NativeFlatMap<ulong, EntityState>.Free(_nativeFlatMap);
+        if (_nativeFlatMap != null)
+        {
+            NativeFlatMap<ulong, EntityState>.Free(_nativeFlatMap);
+            _nativeFlatMap = null;
+        }
         _managedDict.Clear();
+        _fixture.FreeKeys();
     }
 
     // =========================================================================
@@ -102,7 +50,7 @@ public unsafe class FlatMapBenchmark
         int found = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (_flatMap.TryGetValue(_keys[i], out _))
+            if (_flatMap.TryGetValue(_fixture.Keys[i], out _))
             {
                 found++;
             }
@@ -116,7 +64,7 @@ public unsafe class FlatMapBenchmark
         int found = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (_nativeFlatMap->TryGetValue(_keys[i], out _))
+            if (_nativeFlatMap->TryGetValue(_fixture.Keys[i], out _))
             {
                 found++;
             }
@@ -130,7 +78,7 @@ public unsafe class FlatMapBenchmark
         int found = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (_managedDict.TryGetValue(_keys[i], out _))
+            if (_managedDict.TryGetValue(_fixture.Keys[i], out _))
             {
                 found++;
             }
@@ -148,7 +96,7 @@ public unsafe class FlatMapBenchmark
         int missed = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (!_flatMap.TryGetValue(_missingKeys[i], out _))
+            if (!_flatMap.TryGetValue(_fixture.MissingKeys[i], out _))
             {
                 missed++;
             }
@@ -162,7 +110,7 @@ public unsafe class FlatMapBenchmark
         int missed = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (!_nativeFlatMap->TryGetValue(_missingKeys[i], out _))
+            if (!_nativeFlatMap->TryGetValue(_fixture.MissingKeys[i], out _))
             {
                 missed++;
             }
@@ -176,7 +124,7 @@ public unsafe class FlatMapBenchmark
         int missed = 0;
         for (int i = 0; i < KeyCount; i++)
         {
-            if (!_managedDict.TryGetValue(_missingKeys[i], out _))
+            if (!_managedDict.TryGetValue(_fixture.MissingKeys[i], out _))
             {
                 missed++;
             }
@@ -193,7 +141,7 @@ public unsafe class FlatMapBenchmark
     {
         for (int i = 0; i < KeyCount; i++)
         {
-            ref var val = ref _flatMap.GetValueRefOrAddDefault(_keys[i], out _, out _);
+            ref var val = ref _flatMap.GetValueRefOrAddDefault(_fixture.Keys[i], out _, out _);
             val.Health += 1;
         }
     }
@@ -203,7 +151,11 @@ public unsafe class FlatMapBenchmark
     {
         for (int i = 0; i < KeyCount; i++)
         {
-            ref var val = ref _nativeFlatMap->GetValueRefOrAddDefault(_keys[i], out _, out _);
+            ref var val = ref _nativeFlatMap->GetValueRefOrAddDefault(
+                _fixture.Keys[i],
+                out _,
+                out _
+            );
             val.Health += 1;
         }
     }
@@ -213,56 +165,10 @@ public unsafe class FlatMapBenchmark
     {
         for (int i = 0; i < KeyCount; i++)
         {
-            var val = _managedDict[_keys[i]];
+            var val = _managedDict[_fixture.Keys[i]];
             val.Health += 1;
-            _managedDict[_keys[i]] = val;
+            _managedDict[_fixture.Keys[i]] = val;
         }
-    }
-
-    // =========================================================================
-    //  DELETION & PROBE RECOVERY (Backward-Shift Deletion vs Tombstones)
-    // =========================================================================
-
-    [Benchmark]
-    public int BackwardShift_Removal_FlatMap()
-    {
-        int removed = 0;
-        for (int i = 0; i < KeyCount; i += 2)
-        {
-            if (_flatMap.Remove(_keys[i]))
-            {
-                removed++;
-            }
-        }
-        return removed;
-    }
-
-    [Benchmark]
-    public int BackwardShift_Removal_NativeFlatMap()
-    {
-        int removed = 0;
-        for (int i = 0; i < KeyCount; i += 2)
-        {
-            if (_nativeFlatMap->Remove(_keys[i]))
-            {
-                removed++;
-            }
-        }
-        return removed;
-    }
-
-    [Benchmark]
-    public int Removal_ManagedDictionary()
-    {
-        int removed = 0;
-        for (int i = 0; i < KeyCount; i += 2)
-        {
-            if (_managedDict.Remove(_keys[i]))
-            {
-                removed++;
-            }
-        }
-        return removed;
     }
 
     // =========================================================================
