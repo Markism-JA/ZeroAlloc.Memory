@@ -1,0 +1,13 @@
+namespace Memory.Native.Windows.Enums;
+
+[Flags]
+internal enum WindowsMemAllocFlags : uint
+{
+    MEM_COMMIT = 0x00001000,
+    MEM_RESERVE = 0x00002000,
+    MEM_DECOMMIT = 0x00004000,
+    MEM_RELEASE = 0x00008000,
+    MEM_RESERVE_PLACEHOLDER = 0x00040000,
+    MEM_REPLACE_PLACEHOLDER = 0x00004000,
+    MEM_PRESERVE_PLACEHOLDER = 0x00000002,
+}
