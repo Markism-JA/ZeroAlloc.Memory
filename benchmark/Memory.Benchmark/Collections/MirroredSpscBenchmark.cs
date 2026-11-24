@@ -35,6 +35,7 @@ public unsafe class MirroredSpscBenchmark
     private MirroredSpscRing _ring = null!;
     private NativeMirroredSpscRing* _nativeRing;
     private byte* _payloadBuffer;
+    private byte* _readScratchBuffer;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -42,6 +43,7 @@ public unsafe class MirroredSpscBenchmark
         _ring = new MirroredSpscRing(RingCapacity);
         _nativeRing = _ring.DangerousGetNativePointer();
         _payloadBuffer = (byte*)HeapAllocator.Allocate(PayloadSize, 64);
+        _readScratchBuffer = (byte*)HeapAllocator.Allocate(PayloadSize, 64);
 
         for (int i = 0; i < PayloadSize; i++)
         {
@@ -59,6 +61,12 @@ public unsafe class MirroredSpscBenchmark
         {
             HeapAllocator.Free(_payloadBuffer);
             _payloadBuffer = null;
+        }
+
+        if (_readScratchBuffer != null)
+        {
+            HeapAllocator.Free(_readScratchBuffer);
+            _readScratchBuffer = null;
         }
     }
 
@@ -78,6 +86,17 @@ public unsafe class MirroredSpscBenchmark
         _nativeRing->TryWrite(_payloadBuffer, PayloadSize);
         _nativeRing->TryRead(out BlockView view);
         byte firstByte = view.Payload[0];
+        _nativeRing->AdvanceConsumer(in view);
+        return firstByte;
+    }
+
+    [Benchmark]
+    public byte Native_Single_Packet_FullCopy_RoundTrip()
+    {
+        _nativeRing->TryWrite(_payloadBuffer, PayloadSize);
+        _nativeRing->TryRead(out BlockView view);
+        Buffer.MemoryCopy(view.Payload, _readScratchBuffer, PayloadSize, view.Length);
+        byte firstByte = _readScratchBuffer[0];
         _nativeRing->AdvanceConsumer(in view);
         return firstByte;
     }

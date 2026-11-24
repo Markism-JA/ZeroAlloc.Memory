@@ -4,7 +4,6 @@ using Memory.Allocators;
 namespace Memory.Benchmark.Allocators;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class AllocatorMirroredRingBenchmark
 {
     // Benchmark 64KB (Packet Ingress Ring), 1MB (World Broadcast Ring), and 4MB (Shard Master Ring)

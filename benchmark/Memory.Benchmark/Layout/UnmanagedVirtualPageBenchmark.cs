@@ -4,7 +4,6 @@ using Memory.Layout;
 namespace Memory.Benchmark.Layout;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class UnmanagedVirtualPageBenchmark
 {
     // Test small 64B structural slices, 512B entity chunks, and 4096B (1 full OS Page) blocks
@@ -34,12 +33,6 @@ public unsafe class UnmanagedVirtualPageBenchmark
         _virtualPage.Dispose();
     }
 
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        _virtualPage.Reset();
-    }
-
     // =========================================================================
     // FAST-PATH VIRTUAL CARVING (Pre-Committed Memory - 0ns OS Calls)
     // =========================================================================
@@ -56,6 +49,7 @@ public unsafe class UnmanagedVirtualPageBenchmark
             lastPtr = _virtualPage.Carve(size, 64);
         }
 
+        _virtualPage.Reset();
         return lastPtr; // Prevents RyuJIT dead-code elimination
     }
 
@@ -70,6 +64,7 @@ public unsafe class UnmanagedVirtualPageBenchmark
             lastPtr = _virtualPage.CarveZeroed(size, 64);
         }
 
+        _virtualPage.Reset();
         return lastPtr;
     }
 
@@ -105,6 +100,7 @@ public unsafe class UnmanagedVirtualPageBenchmark
         _virtualPage.Carve(CarveBatchCount * SliceSize);
         _virtualPage.PassiveDecommitReclaim();
         void* ptr = _virtualPage.Carve(SliceSize);
+        _virtualPage.Reset();
 
         return ptr != null;
     }

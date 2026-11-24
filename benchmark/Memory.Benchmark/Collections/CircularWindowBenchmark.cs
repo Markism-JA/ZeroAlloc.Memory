@@ -6,7 +6,6 @@ using Memory.Collections.CircularWindow;
 namespace Memory.Benchmark.Collections;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class CircularWindowBenchmarks
 {
     /// <summary>

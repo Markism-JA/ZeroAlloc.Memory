@@ -7,7 +7,6 @@ using Memory.Collections.MirroredMpsc;
 namespace Memory.Benchmark.Collections;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class MirroredMpscBenchmark
 {
     // 64B control packets, 512B entity snapshots, and 1400B MTU-sized frames
@@ -18,11 +17,17 @@ public unsafe class MirroredMpscBenchmark
     private const int HeaderSize = 16; // 16B Framing header
     private const int BurstBatchSize = 32; // Matches data plane batch window
 
+    private const int Producers = 4;
+    private const int WritesPerProducer = 250;
+    private const int TotalConcurrentWrites = Producers * WritesPerProducer;
+
     private MirroredMpscRing _ring = null!;
     private NativeMirroredMpscRing* _nativeRing;
 
     private byte* _headerBuffer;
     private byte* _payloadBuffer;
+    private PersistentWorkerPool _workerPool = null!;
+    private Action<int> _concurrentWriteAction = null!;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -37,11 +42,24 @@ public unsafe class MirroredMpscBenchmark
         {
             _payloadBuffer[i] = (byte)(i & 0xFF);
         }
+
+        _workerPool = new PersistentWorkerPool(Producers, "MirroredMpscBench");
+        _concurrentWriteAction = _ =>
+        {
+            for (int i = 0; i < WritesPerProducer; i++)
+            {
+                while (!_nativeRing->TryWrite(_payloadBuffer, PayloadSize))
+                {
+                    Thread.SpinWait(5);
+                }
+            }
+        };
     }
 
     [GlobalCleanup]
     public void GlobalCleanup()
     {
+        _workerPool?.Dispose();
         _ring?.Dispose();
 
         if (_headerBuffer != null)
@@ -54,16 +72,6 @@ public unsafe class MirroredMpscBenchmark
         {
             HeapAllocator.Free(_payloadBuffer);
             _payloadBuffer = null;
-        }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        // Drain any unconsumed residual frames between iterations
-        while (_nativeRing->TryRead(out BlockView view))
-        {
-            _nativeRing->AdvanceConsumer(in view);
         }
     }
 
@@ -219,27 +227,10 @@ public unsafe class MirroredMpscBenchmark
     [Benchmark]
     public void Mpsc_Concurrent_Drain_1By1()
     {
-        const int producers = 4;
-        const int writesPerProducer = 250;
-        const int totalWrites = producers * writesPerProducer;
-
-        Parallel.For(
-            0,
-            producers,
-            _ =>
-            {
-                for (int i = 0; i < writesPerProducer; i++)
-                {
-                    while (!_nativeRing->TryWrite(_payloadBuffer, PayloadSize))
-                    {
-                        Thread.SpinWait(5);
-                    }
-                }
-            }
-        );
+        _workerPool.Execute(_concurrentWriteAction);
 
         int consumed = 0;
-        while (consumed < totalWrites)
+        while (consumed < TotalConcurrentWrites)
         {
             if (_nativeRing->TryRead(out BlockView view))
             {
@@ -252,29 +243,12 @@ public unsafe class MirroredMpscBenchmark
     [Benchmark]
     public byte Mpsc_Concurrent_Drain_Batch_Devirtualized()
     {
-        const int producers = 4;
-        const int writesPerProducer = 250;
-        const int totalWrites = producers * writesPerProducer;
-
-        Parallel.For(
-            0,
-            producers,
-            _ =>
-            {
-                for (int i = 0; i < writesPerProducer; i++)
-                {
-                    while (!_nativeRing->TryWrite(_payloadBuffer, PayloadSize))
-                    {
-                        Thread.SpinWait(5);
-                    }
-                }
-            }
-        );
+        _workerPool.Execute(_concurrentWriteAction);
 
         int consumed = 0;
         var consumer = new BenchmarkSinkConsumer();
 
-        while (consumed < totalWrites)
+        while (consumed < TotalConcurrentWrites)
         {
             int drained = _nativeRing->DrainBatch(ref consumer, maxBatchSize: BurstBatchSize);
             consumed += drained;

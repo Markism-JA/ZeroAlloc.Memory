@@ -1,3 +1,4 @@
+using System.Buffers;
 using BenchmarkDotNet.Attributes;
 using Memory.Allocators;
 using Memory.Arena;
@@ -5,7 +6,6 @@ using Memory.Arena;
 namespace Memory.Benchmark.Arena;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class UnmanagedLinearArenaBenchmark
 {
     public struct EntityTransform
@@ -24,6 +24,10 @@ public unsafe class UnmanagedLinearArenaBenchmark
     private void* _arenaVirtualBuffer;
     private UnmanagedLinearArena<EntityTransform> _arena;
 
+    private const int WorkerCount = 4;
+    private PersistentWorkerPool _workerPool = null!;
+    private Action<int> _parallelLeaseAction = null!;
+
     [Params(100, 1000, 10000)]
     public int LeaseCount;
 
@@ -39,22 +43,31 @@ public unsafe class UnmanagedLinearArenaBenchmark
             ArenaCapacityBytes,
             AllocationType.KernelVirtual
         );
+
+        _workerPool = new PersistentWorkerPool(WorkerCount, "ArenaBench");
+        _parallelLeaseAction = threadId =>
+        {
+            int perThreadLeases = LeaseCount / WorkerCount;
+            for (int i = 0; i < perThreadLeases; i++)
+            {
+                EntityTransform* transform = _arena.Lease(1);
+                if (transform != null)
+                {
+                    transform->Y = threadId;
+                }
+            }
+        };
     }
 
     [GlobalCleanup]
     public void GlobalCleanup()
     {
+        _workerPool?.Dispose();
         if (_arenaVirtualBuffer != null)
         {
             PageAllocator.ReleaseVirtual(_arenaVirtualBuffer, ArenaCapacityBytes);
             _arenaVirtualBuffer = null;
         }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        _arena.Reset();
     }
 
     // =========================================================================
@@ -91,6 +104,20 @@ public unsafe class UnmanagedLinearArenaBenchmark
         _arena.Reset();
     }
 
+    [Benchmark]
+    public void ArrayPool_Shared_Batch_RentReturn()
+    {
+        const int batchSize = 100;
+        int iterations = LeaseCount / batchSize;
+
+        for (int i = 0; i < iterations; i++)
+        {
+            EntityTransform[] rented = ArrayPool<EntityTransform>.Shared.Rent(batchSize);
+            rented[0].X = i;
+            ArrayPool<EntityTransform>.Shared.Return(rented);
+        }
+    }
+
     // =========================================================================
     //  MULTI-THREADED CAS CONTENTION (Parallel System Execution)
     // =========================================================================
@@ -98,24 +125,7 @@ public unsafe class UnmanagedLinearArenaBenchmark
     [Benchmark]
     public void Parallel_MultiThreaded_Lease_Contention()
     {
-        int perThreadLeases = LeaseCount / 4;
-
-        Parallel.For(
-            0,
-            4,
-            threadId =>
-            {
-                for (int i = 0; i < perThreadLeases; i++)
-                {
-                    EntityTransform* transform = _arena.Lease(1);
-                    if (transform != null)
-                    {
-                        transform->Y = threadId;
-                    }
-                }
-            }
-        );
-
+        _workerPool.Execute(_parallelLeaseAction);
         _arena.Reset();
     }
 

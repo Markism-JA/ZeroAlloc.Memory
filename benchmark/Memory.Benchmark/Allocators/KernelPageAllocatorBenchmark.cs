@@ -4,7 +4,6 @@ using Memory.Allocators;
 namespace Memory.Benchmark.Allocators;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class KernelPageAllocatorBenchmark
 {
     // Benchmark 1 Page (4KB), 16 Pages (64KB), and 256 Pages (1MB)

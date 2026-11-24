@@ -5,7 +5,6 @@ using Memory.Layout;
 namespace Memory.Benchmark.Layout;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class UnmanagedPageBenchmark
 {
     // Test typical scratchpad slices: 32B (Transform/Vector), 128B (Raycast hit data), 512B (Packet payload)
@@ -33,12 +32,6 @@ public unsafe class UnmanagedPageBenchmark
         _page.Dispose();
     }
 
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        _page.Reset();
-    }
-
     // =========================================================================
     // RAW BUMP SLICING THROUGHPUT (Carve vs CarveZeroed)
     // =========================================================================
@@ -56,6 +49,7 @@ public unsafe class UnmanagedPageBenchmark
             lastPtr = _page.Carve(size, align);
         }
 
+        _page.Reset();
         return lastPtr; // Prevents RyuJIT dead-code elimination
     }
 
@@ -71,6 +65,7 @@ public unsafe class UnmanagedPageBenchmark
             lastPtr = _page.CarveZeroed(size, align);
         }
 
+        _page.Reset();
         return lastPtr;
     }
 
@@ -96,6 +91,7 @@ public unsafe class UnmanagedPageBenchmark
             lastByte = slice[size - 1];
         }
 
+        _page.Reset();
         return lastByte;
     }
 
@@ -107,7 +103,9 @@ public unsafe class UnmanagedPageBenchmark
     public void* Carve_PassedByValue_StackCopy()
     {
         // Passes 8-byte UnmanagedPage struct by value to verify 0ns register passing in RyuJIT
-        return ExecuteCarveByValue(_page, SliceSize, Alignment);
+        void* ptr = ExecuteCarveByValue(_page, SliceSize, Alignment);
+        _page.Reset();
+        return ptr;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

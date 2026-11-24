@@ -5,7 +5,6 @@ using Memory.Allocators;
 namespace Memory.Benchmark.Allocators;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class NativeHeapAllocatorBenchmark
 {
     // Test realistic game server memory allocation payloads

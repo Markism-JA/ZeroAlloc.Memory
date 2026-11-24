@@ -6,7 +6,6 @@ using Memory.Collections.Spsc;
 namespace Memory.Benchmark.Collections;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class SpscRingBenchmark
 {
     public struct Packet64
@@ -92,13 +91,6 @@ public unsafe class SpscRingBenchmark
             HeapAllocator.Free(_batchDrain64);
             _batchDrain64 = null;
         }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        while (_ring64.TryDequeue(out _)) { }
-        while (_ring512.TryDequeue(out _)) { }
     }
 
     private void ConsumerWorkerLoop()

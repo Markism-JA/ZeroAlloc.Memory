@@ -5,7 +5,6 @@ using Memory.Arena;
 namespace Memory.Benchmark.Arena;
 
 [MemoryDiagnoser]
-[ShortRunJob]
 public unsafe class UnmanagedArrayTrackBenchmark
 {
     public struct TestComponent
