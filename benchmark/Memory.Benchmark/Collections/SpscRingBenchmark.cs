@@ -25,8 +25,8 @@ public unsafe class SpscRingBenchmark
     private const int BatchSize = 64;
     private const int PipelineItemCount = 100_000;
 
-    private SpscRing<Packet64> _ring64;
-    private SpscRing<Packet512> _ring512;
+    private SpscRing<Packet64> _ring64 = null!;
+    private SpscRing<Packet512> _ring512 = null!;
 
     private Packet64* _batchSource64;
     private Packet64* _batchDrain64;
@@ -35,7 +35,7 @@ public unsafe class SpscRingBenchmark
     private Packet512 _sample512;
 
     // Dedicated, persistent thread infrastructure to eliminate ThreadPool / Task allocations
-    private Thread _consumerThread;
+    private Thread _consumerThread = null!;
     private readonly AutoResetEvent _startConsumerSignal = new(false);
     private readonly AutoResetEvent _consumerCompletedSignal = new(false);
     private volatile bool _isRunning;

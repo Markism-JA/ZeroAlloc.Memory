@@ -10,7 +10,7 @@ namespace Memory.Tests.Stress;
 public sealed class RingConcurrencyStressTests
 {
     [Fact]
-    public void SpscRing_HighVolumeWrapAround_PreservesOrderAndValues()
+    public async Task SpscRing_HighVolumeWrapAround_PreservesOrderAndValues()
     {
         const int capacity = 256;
         const int totalItems = 500_000;
@@ -53,14 +53,14 @@ public sealed class RingConcurrencyStressTests
         });
 
         startBarrier.Set();
-        Task.WaitAll(producer, consumer);
+        await Task.WhenAll(producer, consumer);
 
         Assert.Null(mismatch);
         Assert.True(ring.IsEmpty);
     }
 
     [Fact]
-    public void BoundedMpscRing_MultiProducerContention_ZeroLostOrCorruptedItems()
+    public async Task BoundedMpscRing_MultiProducerContention_ZeroLostOrCorruptedItems()
     {
         const int producerCount = 4;
         const int itemsPerProducer = 50_000;
@@ -125,7 +125,7 @@ public sealed class RingConcurrencyStressTests
         });
 
         startBarrier.Set();
-        Task.WaitAll([.. producers, consumer]);
+        await Task.WhenAll([.. producers, consumer]);
 
         Assert.Null(error);
         Assert.Equal(totalItems, consumed);
@@ -133,7 +133,7 @@ public sealed class RingConcurrencyStressTests
     }
 
     [Fact]
-    public unsafe void MirroredSpscRing_VariableSizeWrapAroundStress_PreservesContiguousPayloads()
+    public async Task MirroredSpscRing_VariableSizeWrapAroundStress_PreservesContiguousPayloads()
     {
         const int totalFrames = 40_000;
         using var ring = new MirroredSpscRing(byteCapacity: 65_536);
@@ -155,11 +155,14 @@ public sealed class RingConcurrencyStressTests
                 MemoryMarshal.Write(buffer.Slice(4), in payloadLen);
                 MemoryMarshal.Write(buffer.Slice(8), in checksum);
 
-                fixed (byte* ptr = buffer)
+                unsafe
                 {
-                    while (!ring.TryWrite(ptr, payloadLen))
+                    fixed (byte* ptr = buffer)
                     {
-                        spin.SpinOnce();
+                        while (!ring.TryWrite(ptr, payloadLen))
+                        {
+                            spin.SpinOnce();
+                        }
                     }
                 }
             }
@@ -195,14 +198,14 @@ public sealed class RingConcurrencyStressTests
         });
 
         startBarrier.Set();
-        Task.WaitAll(producer, consumer);
+        await Task.WhenAll(producer, consumer);
 
         Assert.Null(error);
         Assert.True(ring.IsEmpty);
     }
 
     [Fact]
-    public unsafe void MirroredMpscRing_MultiProducerVariableSizeStress_ZeroCorruption()
+    public async Task MirroredMpscRing_MultiProducerVariableSizeStress_ZeroCorruption()
     {
         const int producerCount = 4;
         const int framesPerProducer = 15_000;
@@ -284,7 +287,7 @@ public sealed class RingConcurrencyStressTests
         });
 
         startBarrier.Set();
-        Task.WaitAll([.. producers, consumer]);
+        await Task.WhenAll([.. producers, consumer]);
 
         Assert.Null(error);
         Assert.Equal(totalFrames, consumed);

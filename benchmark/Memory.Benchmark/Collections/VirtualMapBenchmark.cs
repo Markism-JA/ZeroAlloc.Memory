@@ -22,13 +22,13 @@ public unsafe class VirtualMapBenchmark
     [Params(10_000, 100_000)]
     public int KeyCount;
 
-    private VirtualMap<ulong, EntityState> _virtualMap;
+    private VirtualMap<ulong, EntityState> _virtualMap = null!;
     private NativeVirtualMap<ulong, EntityState>* _nativeVirtualMap;
 
-    private FlatMap<ulong, EntityState> _flatMap;
+    private FlatMap<ulong, EntityState> _flatMap = null!;
     private NativeFlatMap<ulong, EntityState>* _nativeFlatMap;
 
-    private Dictionary<ulong, EntityState> _managedDict;
+    private Dictionary<ulong, EntityState> _managedDict = null!;
 
     private ulong* _keys;
     private ulong* _missingKeys;

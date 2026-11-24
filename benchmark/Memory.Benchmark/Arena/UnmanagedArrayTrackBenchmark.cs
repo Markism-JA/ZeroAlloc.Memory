@@ -21,7 +21,7 @@ public unsafe class UnmanagedArrayTrackBenchmark
 
     private byte* _rawBuffer;
     private UnmanagedArrayTrack<TestComponent> _arrayTrack;
-    private int[] _randomIndices;
+    private int[] _randomIndices = null!;
 
     [GlobalSetup]
     public void GlobalSetup()

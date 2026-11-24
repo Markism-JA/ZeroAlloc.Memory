@@ -18,7 +18,7 @@ public unsafe class MirroredMpscBenchmark
     private const int HeaderSize = 16; // 16B Framing header
     private const int BurstBatchSize = 32; // Matches data plane batch window
 
-    private MirroredMpscRing _ring;
+    private MirroredMpscRing _ring = null!;
     private NativeMirroredMpscRing* _nativeRing;
 
     private byte* _headerBuffer;

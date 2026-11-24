@@ -5,7 +5,6 @@ using Memory.Native.Posix.Enums;
 using Memory.Native.Windows;
 using Memory.Native.Windows.Enums;
 using Memory.Native.Windows.Structs;
-using Memory.Native.Windows.Structs;
 #if NET6_0_OR_GREATER
 using NativeUInt = nuint;
 using NativeInt = nint;

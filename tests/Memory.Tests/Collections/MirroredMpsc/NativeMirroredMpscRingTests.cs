@@ -414,8 +414,10 @@ public unsafe class NativeMirroredMpscRingTests
             });
 
             startSignal.Set();
+#pragma warning disable xUnit1031 // unsafe test method cannot be async
             Task.WaitAll(producerTasks);
             consumerTask.Wait();
+#pragma warning restore xUnit1031
 
             Assert.Equal(0, Volatile.Read(ref tornFrameDetected));
             Assert.Equal(-1, Volatile.Read(ref failedSequence));

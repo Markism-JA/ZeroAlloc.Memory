@@ -294,8 +294,10 @@ public unsafe class NativeCircularWindowTests
             }
 
             startSignal.Set();
+#pragma warning disable xUnit1031 // unsafe test method cannot be async
             Task.WaitAll(writerTask);
             Task.WaitAll(readerTasks);
+#pragma warning restore xUnit1031
 
             Assert.Equal(0, Volatile.Read(ref tornFramesDetected));
             Assert.Equal(totalWrites, window->WriteCursor);

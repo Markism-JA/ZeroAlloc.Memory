@@ -545,7 +545,9 @@ public unsafe class MirroredSpscRingTests
             TaskCreationOptions.LongRunning
         );
 
+#pragma warning disable xUnit1031 // unsafe test method cannot be async
         Task.WaitAll(producer, consumer);
+#pragma warning restore xUnit1031
 
         Assert.Equal(0, Volatile.Read(ref tornFrameDetected));
         Assert.Equal(-1, Volatile.Read(ref failedSequence));

@@ -27,12 +27,12 @@ public unsafe class CircularWindowBenchmarks
     private const int _batchSize = 32;
 
     private NativeCircularWindow<BenchmarkPacket>* _nativeWindow;
-    private CircularWindow<BenchmarkPacket> _managedWindow;
+    private CircularWindow<BenchmarkPacket> _managedWindow = null!;
 
     private BenchmarkPacket* _singlePacket;
     private BenchmarkPacket* _batchPackets;
     private BenchmarkPacket* _queryBuffer;
-    private BenchmarkPacket[] _managedQueryArray;
+    private BenchmarkPacket[] _managedQueryArray = null!;
 
     private long _filterTimestampCutoff;
 

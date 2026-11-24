@@ -10,6 +10,13 @@ namespace Memory.Tests.Arena
             public float X,
                 Y,
                 Z;
+
+            public MockTransform(float x, float y, float z)
+            {
+                X = x;
+                Y = y;
+                Z = z;
+            }
         }
 
         [Fact]

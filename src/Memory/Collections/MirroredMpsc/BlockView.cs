@@ -58,7 +58,7 @@ public readonly unsafe ref struct BlockView
     /// Safety-wraps the raw unmanaged pointer into a managed memory window (<see cref="ReadOnlySpan{T}"/>)
     /// without heap allocations or runtime garbage tracking overhead.
     /// </summary>
-    /// <returns>A safe <see cref="ReadOnlySpan{byte}"/> spanning the underlying unmanaged block payload.</returns>
+    /// <returns>A safe <see cref="ReadOnlySpan{T}"/> spanning the underlying unmanaged block payload.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<byte> AsSpan() => new ReadOnlySpan<byte>(Payload, Length);
 }
