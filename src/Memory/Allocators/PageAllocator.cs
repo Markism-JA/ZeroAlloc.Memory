@@ -20,10 +20,11 @@ namespace Memory.Allocators;
 /// </summary>
 public unsafe partial struct PageAllocator
 {
-    private const int _scPageSize = 30;
+    private const int _scPageSizeLinux = 30;
+    private const int _scPageSizeOsx = 29;
 
     /// <summary>
-    /// Gets the host operating system physical page size in bytes (typically 4096 bytes).
+    /// Gets the host operating system physical page size in bytes (e.g. 4096 on x64/Linux, 16384 on Apple Silicon).
     /// </summary>
     public static readonly int SystemPageSize;
 
@@ -34,10 +35,18 @@ public unsafe partial struct PageAllocator
 
     static PageAllocator()
     {
+        if (!Environment.Is64BitProcess)
+        {
+            throw new PlatformNotSupportedException("ZeroAlloc.Memory requires a 64-bit (x64 or ARM64) process.");
+        }
+
         int pageSize = 4096;
 
         try
         {
+#if NET8_0_OR_GREATER
+            pageSize = Environment.SystemPageSize;
+#else
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 SystemInfo si = default;
@@ -46,13 +55,17 @@ public unsafe partial struct PageAllocator
             }
             else
             {
-                NativeInt res = Libc.Sysconf(_scPageSize);
+                int scPageSize = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                    ? _scPageSizeOsx
+                    : _scPageSizeLinux;
+                NativeInt res = Libc.Sysconf(scPageSize);
                 long numericResult = (long)(void*)res;
                 if (numericResult > 0)
                 {
                     pageSize = (int)numericResult;
                 }
             }
+#endif
         }
         catch
         {

@@ -111,4 +111,12 @@ public unsafe partial class PageAllocatorTests
             "Decommit should abort and return false if the range is less than one system page."
         );
     }
+
+    [Fact]
+    public void SystemProbe_ShouldMatchRuntimePageSizeAndRequire64BitProcess()
+    {
+        Assert.True(Environment.Is64BitProcess, "Tests must execute in a 64-bit process.");
+        Assert.Equal(8, sizeof(void*));
+        Assert.Equal(Environment.SystemPageSize, PageAllocator.SystemPageSize);
+    }
 }
