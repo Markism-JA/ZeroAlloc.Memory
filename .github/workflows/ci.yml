@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-matrix:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest       # linux-x64
+          - ubuntu-24.04-arm    # linux-arm64
+          - windows-latest      # win-x64
+          - macos-latest        # osx-arm64 (16KB pages)
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build netstandard2.1 library
+        run: dotnet build src/Memory/Memory.csproj -c Release -f netstandard2.1 --no-restore
+
+      - name: Run tests (net10.0)
+        run: dotnet test -c Release --no-restore --verbosity normal
+
+  benchmark-smoke:
+    name: Benchmark Smoke Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build & dry-run benchmarks
+        run: dotnet run --project benchmark/Memory.Benchmark -c Release -- --job dry --filter *SpscRingBenchmark*
