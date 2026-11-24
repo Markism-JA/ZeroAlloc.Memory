@@ -72,11 +72,12 @@ ring.TryDequeue(out long value);
 
 ![FlatMap vs Dictionary Latency](./docs/benchmarks/flatmap_vs_dictionary.png)
 
-* **`FlatMap` / `NativeFlatMap` vs `Dictionary<K,V>` (`10,000` keys):** `276 µs` vs `759 µs` on hits (**2.75× faster**), `175 µs` vs `855 µs` on in-place mutation (**4.88× faster**), `0 B` allocated. *(Note: dense full-table iteration remains faster in `Dictionary` — see full tradeoffs.)*
-* **`UnmanagedLinearArena` (`10,000` batch slices):** `4,101 ns` (`0.41 ns/item`, `0 B` allocated).
-* **`SpscRing` (`64B` zero-copy round-trip):** `269.8 ns`, `0 B` allocated.
+* **`BoundedMpscRing` vs `Channel<T>` (`64 B` round-trip):** `13.36 ns` (native) / `13.96 ns` (managed) vs `81.19 ns` (**6.08× faster**, `0 B` allocated).
+* **`MirroredSpscRing` (`64 B` packet round-trip):** `8.41 ns` (native) / `9.44 ns` (managed), `0 B` allocated.
+* **`FlatMap` / `NativeFlatMap` vs `Dictionary<K,V>` (`10,000` keys):** `62.89 µs` vs `101.16 µs` on hits (**1.61× faster**), `69.89 µs` vs `165.39 µs` on in-place mutation (**2.37× faster**), `0 B` allocated. *(Note: `Dictionary` is faster on `100,000`-key point lookups and dense full-table iteration — see full analysis.)*
+* **`UnmanagedLinearArena` (`10,000` batch slices):** `2,835.7 ns` (`0.28 ns/item`, `0 B` allocated).
 
-Full BenchmarkDotNet tables & reproduction commands: **[docs/benchmarks/README.md](./docs/benchmarks/README.md)**
+Full BenchmarkDotNet tables, charts & analysis (all 17 suites): **[docs/benchmarks/README.md](./docs/benchmarks/README.md)**
 
 ---
 
