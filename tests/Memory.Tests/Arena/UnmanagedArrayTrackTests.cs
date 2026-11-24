@@ -104,5 +104,40 @@ namespace Memory.Tests.Arena
                 HeapAllocator.Free(rawMemoryBlock);
             }
         }
+
+        [Fact]
+        public void DefaultStruct_ReportsNotCreated_AndZeroLength()
+        {
+            UnmanagedArrayTrack<MockEntityData> uninitialized = default;
+            Assert.False(uninitialized.IsCreated);
+            Assert.Equal(0, uninitialized.Length);
+            Assert.True(uninitialized.RawBufferStart == null);
+        }
+
+        [Fact]
+        public void CreateOverPointer_ShouldThrow_WhenPointerIsNullOrLengthIsInvalid()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => UnmanagedArrayTrack<MockEntityData>.CreateOverPointer(null, 4)
+            );
+
+            void* rawMemoryBlock = HeapAllocator.Allocate(64, 8);
+            try
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(
+                    () => UnmanagedArrayTrack<MockEntityData>.CreateOverPointer(rawMemoryBlock, -1)
+                );
+
+                var emptyTrack = UnmanagedArrayTrack<MockEntityData>.CreateOverPointer(
+                    rawMemoryBlock,
+                    0
+                );
+                Assert.Equal(0, emptyTrack.Length);
+            }
+            finally
+            {
+                HeapAllocator.Free(rawMemoryBlock);
+            }
+        }
     }
 }

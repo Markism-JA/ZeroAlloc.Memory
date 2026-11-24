@@ -52,5 +52,56 @@ namespace Memory.Tests.Allocators
                 }
             }
         }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(24)]
+        public void NormalizeAlignment_SnapsInvalidOrSmallAlignmentsToPointerSize(int requested)
+        {
+            Assert.Equal(sizeof(void*), HeapAllocator.NormalizeAlignment(requested));
+        }
+
+        [Theory]
+        [InlineData(8, 8)]
+        [InlineData(16, 16)]
+        [InlineData(64, 64)]
+        public void NormalizeAlignment_PreservesValidPowerOfTwoAlignments(int requested, int expected)
+        {
+            Assert.Equal(expected, HeapAllocator.NormalizeAlignment(requested));
+        }
+
+        [Theory]
+        [InlineData(128, 16)]
+        [InlineData(2048, 64)]
+        public void AllocateFallback_AndFreeFallback_WorkWithRequestedAlignment(
+            int bytes,
+            int alignment
+        )
+        {
+            void* ptr = HeapAllocator.Allocate_Fallback(bytes, alignment);
+            try
+            {
+                Assert.True(ptr != null);
+                Assert.Equal(0UL, (ulong)ptr & (ulong)(alignment - 1));
+
+                byte* bytesPtr = (byte*)ptr;
+                bytesPtr[0] = 0x55;
+                bytesPtr[bytes - 1] = 0x77;
+                Assert.Equal(0x55, bytesPtr[0]);
+                Assert.Equal(0x77, bytesPtr[bytes - 1]);
+            }
+            finally
+            {
+                HeapAllocator.Free_Fallback(ptr);
+            }
+        }
+
+        [Fact]
+        public void Free_NullPointer_IsSafeNoOp()
+        {
+            HeapAllocator.Free(null);
+            HeapAllocator.Free_Fallback(null);
+        }
     }
 }

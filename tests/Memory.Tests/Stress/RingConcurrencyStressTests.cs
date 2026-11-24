@@ -294,6 +294,198 @@ public sealed class RingConcurrencyStressTests
         Assert.True(ring.IsEmpty);
     }
 
+    private struct BackpressureItem
+    {
+        public int ProducerId;
+        public int Sequence;
+        public ulong Checksum;
+    }
+
+    [Fact]
+    public async Task BoundedMpscRing_BackpressureSaturation_ZeroLostOrCorruptedItems()
+    {
+        const int producerCount = 4;
+        const int itemsPerProducer = 25_000;
+        const int totalItems = producerCount * itemsPerProducer;
+
+        // Deliberately small capacity (64) to force heavy full-ring backpressure under 4-producer contention
+        using var ring = new BoundedMpscRing<BackpressureItem>(elementCapacity: 64);
+        var startBarrier = new ManualResetEventSlim(false);
+        long backpressureHits = 0;
+
+        var producers = new Task[producerCount];
+        for (int p = 0; p < producerCount; p++)
+        {
+            int producerId = p;
+            producers[p] = Task.Run(() =>
+            {
+                startBarrier.Wait();
+                var spin = new SpinWait();
+
+                for (int seq = 0; seq < itemsPerProducer; seq++)
+                {
+                    var item = new BackpressureItem
+                    {
+                        ProducerId = producerId,
+                        Sequence = seq,
+                        Checksum = ((ulong)producerId << 32) ^ (uint)seq ^ 0xA5A5_5A5AUL,
+                    };
+
+                    while (!ring.TryWrite(in item))
+                    {
+                        Interlocked.Increment(ref backpressureHits);
+                        spin.SpinOnce();
+                    }
+                }
+            });
+        }
+
+        var nextExpectedSeq = new int[producerCount];
+        int consumed = 0;
+        string? error = null;
+
+        var consumer = Task.Run(() =>
+        {
+            startBarrier.Wait();
+            var spin = new SpinWait();
+
+            while (consumed < totalItems)
+            {
+                if (ring.TryRead(out BackpressureItem item))
+                {
+                    ulong expectedChecksum =
+                        ((ulong)item.ProducerId << 32) ^ (uint)item.Sequence ^ 0xA5A5_5A5AUL;
+
+                    if (
+                        item.ProducerId < 0
+                        || item.ProducerId >= producerCount
+                        || item.Sequence != nextExpectedSeq[item.ProducerId]
+                        || item.Checksum != expectedChecksum
+                    )
+                    {
+                        error =
+                            $"Backpressure mismatch: pid={item.ProducerId}, seq={item.Sequence}";
+                        break;
+                    }
+
+                    nextExpectedSeq[item.ProducerId]++;
+                    consumed++;
+
+                    if ((consumed & 0x3F) == 0)
+                    {
+                        Thread.Yield();
+                    }
+                }
+                else
+                {
+                    spin.SpinOnce();
+                }
+            }
+        });
+
+        startBarrier.Set();
+        await Task.WhenAll([.. producers, consumer]);
+
+        Assert.Null(error);
+        Assert.Equal(totalItems, consumed);
+        Assert.True(ring.IsEmpty);
+        Assert.True(Volatile.Read(ref backpressureHits) > 0);
+    }
+
+    [Fact]
+    public async Task MirroredSpscRing_WriteScopeAbortAcrossWrapAround_ZeroCorruption()
+    {
+        const int committedFrames = 10_000;
+
+        using var ring = new MirroredSpscRing(byteCapacity: 16_384);
+        var startBarrier = new ManualResetEventSlim(false);
+
+        var producer = Task.Run(() =>
+        {
+            startBarrier.Wait();
+            var spin = new SpinWait();
+            int seq = 0;
+            int attempt = 0;
+
+            while (seq < committedFrames)
+            {
+                int payloadLen = 32 + ((attempt * 29) % 320);
+
+                if (!ring.TryReserve(payloadLen, out Memory.Collections.MirroredSpsc.SpscWriteScope scope))
+                {
+                    spin.SpinOnce();
+                    continue;
+                }
+
+                // Abort every 3rd reservation across wrap-around boundaries
+                if ((attempt % 3) == 1)
+                {
+                    scope.Span.Fill(0xFF);
+                    scope.Abort();
+                    attempt++;
+                    continue;
+                }
+
+                uint checksum = ComputePattern(seq, payloadLen, scope.Span);
+                MemoryMarshal.Write(scope.Span, in seq);
+                MemoryMarshal.Write(scope.Span.Slice(4), in payloadLen);
+                MemoryMarshal.Write(scope.Span.Slice(8), in checksum);
+                scope.Dispose();
+
+                seq++;
+                attempt++;
+            }
+        });
+
+        int consumed = 0;
+        string? error = null;
+
+        var consumer = Task.Run(() =>
+        {
+            startBarrier.Wait();
+            var spin = new SpinWait();
+
+            while (consumed < committedFrames)
+            {
+                if (!ring.TryRead(out Memory.Collections.MirroredMpsc.BlockView view))
+                {
+                    spin.SpinOnce();
+                    continue;
+                }
+
+                var span = view.AsSpan();
+                int seq = MemoryMarshal.Read<int>(span);
+                int len = MemoryMarshal.Read<int>(span.Slice(4));
+                uint checksum = MemoryMarshal.Read<uint>(span.Slice(8));
+
+                if (seq != consumed || len != view.Length)
+                {
+                    error = $"Expected seq={consumed}, got seq={seq} len={len}/{view.Length}";
+                    ring.AdvanceConsumer(in view);
+                    break;
+                }
+
+                uint expectedChecksum = VerifyPattern(seq, span, headerBytes: 16);
+                if (checksum != expectedChecksum)
+                {
+                    error = $"Checksum mismatch at seq={seq}";
+                    ring.AdvanceConsumer(in view);
+                    break;
+                }
+
+                consumed++;
+                ring.AdvanceConsumer(in view);
+            }
+        });
+
+        startBarrier.Set();
+        await Task.WhenAll(producer, consumer);
+
+        Assert.Null(error);
+        Assert.Equal(committedFrames, consumed);
+        Assert.True(ring.IsEmpty);
+    }
+
     private static uint ComputePattern(int seed, int length, Span<byte> buffer)
     {
         uint hash = 2166136261u;
