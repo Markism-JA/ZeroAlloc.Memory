@@ -167,11 +167,14 @@ namespace Memory.Tests.Layout
             finally
             {
                 // Absolute structural verification cleanup step in case exception tracking gates bypass assertions
-                byte* memoryHead = (byte*)page.Carve(0, 1);
-                uint* rawCanaryAddress = (uint*)(memoryHead + 64);
-                *rawCanaryAddress = 0xDEADBEEF;
+                if (page.DataPointer != null)
+                {
+                    byte* memoryHead = (byte*)page.Carve(0, 1);
+                    uint* rawCanaryAddress = (uint*)(memoryHead + 64);
+                    *rawCanaryAddress = 0xDEADBEEF;
 
-                page.Dispose();
+                    page.Dispose();
+                }
             }
         }
     }
