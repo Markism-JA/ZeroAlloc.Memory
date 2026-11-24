@@ -50,8 +50,12 @@ jobs:
       - name: Build netstandard2.1 library
         run: dotnet build src/Memory/Memory.csproj -c Release -f netstandard2.1 --no-restore
 
-      - name: Run tests (net10.0)
+      - name: Run tests (net10.0, Release)
         run: dotnet test -c Release --no-restore --verbosity normal
+
+      - name: Run tests (net10.0, Debug)
+        if: matrix.os == 'ubuntu-latest'
+        run: dotnet test -c Debug --no-restore --verbosity normal
 
   benchmark-smoke:
     name: Benchmark Smoke Check
@@ -65,5 +69,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Build & dry-run benchmarks
-        run: dotnet run --project benchmark/Memory.Benchmark -c Release -- --job dry --filter *SpscRingBenchmark*
+      - name: Verify benchmark discovery & dry-run
+        run: |
+          dotnet run --project benchmark/Memory.Benchmark -c Release -- --list flat > /dev/null
+          dotnet run --project benchmark/Memory.Benchmark -c Release -- --job dry --filter "*SpscRingBenchmark*" "*BoundedMpscRingBenchmark*" "*MirroredSpscBenchmark*" "*MonotonicTableBenchmark*" "*FlatMapBenchmark*"
