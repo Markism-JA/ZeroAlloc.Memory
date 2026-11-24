@@ -20,8 +20,8 @@ public unsafe class NativeMirroredMpscRingTests
             Assert.Equal(_testCapacity, ring->Capacity);
             Assert.Equal(0, ring->OccupiedBytes);
             Assert.Equal(_testCapacity, ring->FreeBytes);
-            Assert.Equal(1, ring->HeadSequence);
-            Assert.Equal(1, ring->TailSequence);
+            Assert.Equal(8, ring->HeadSequence);
+            Assert.Equal(8, ring->TailSequence);
         }
         finally
         {

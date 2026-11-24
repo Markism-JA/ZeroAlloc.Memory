@@ -157,10 +157,10 @@ public unsafe struct NativeMirroredMpscRing
         _nativeHandle = nativeHandle;
 
         // Sequence starts at 1 so uninitialized zeroed memory (0) on newly mapped pages
-        // never matches a valid commit sequence.
-        _head.Value = 1;
-        _tail.Value = 1;
-        _cachedTail.Value = 1;
+        // never matches a valid commit sequence, while staying 8-byte aligned for ARM64 atomics.
+        _head.Value = 8;
+        _tail.Value = 8;
+        _cachedTail.Value = 8;
     }
 
     public static void Free(NativeMirroredMpscRing* ring)
