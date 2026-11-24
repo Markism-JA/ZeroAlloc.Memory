@@ -1,4 +1,3 @@
 ﻿using BenchmarkDotNet.Running;
-using Memory.Benchmark.Layout;
 
-BenchmarkRunner.Run<UnmanagedVirtualPageBenchmark>();
+BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
