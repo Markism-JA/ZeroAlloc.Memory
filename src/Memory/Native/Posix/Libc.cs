@@ -33,6 +33,12 @@ internal static unsafe partial class Libc
     [LibraryImport(LibName, EntryPoint = "memfd_create", SetLastError = true)]
     public static partial int MemfdCreate(byte* name, uint flags);
 
+    [LibraryImport(LibName, EntryPoint = "mkstemp", SetLastError = true)]
+    public static partial int Mkstemp(byte* template);
+
+    [LibraryImport(LibName, EntryPoint = "unlink", SetLastError = true)]
+    public static partial int Unlink(byte* path);
+
     [LibraryImport(LibName, EntryPoint = "ftruncate", SetLastError = true)]
     public static partial int Ftruncate(int fd, nint length);
 
@@ -69,6 +75,12 @@ internal static unsafe partial class Libc
 
     [DllImport(LibName, EntryPoint = "memfd_create", SetLastError = true)]
     public static extern int MemfdCreate(byte* name, uint flags);
+
+    [DllImport(LibName, EntryPoint = "mkstemp", SetLastError = true)]
+    public static extern int Mkstemp(byte* template);
+
+    [DllImport(LibName, EntryPoint = "unlink", SetLastError = true)]
+    public static extern int Unlink(byte* path);
 
     [DllImport(LibName, EntryPoint = "ftruncate", SetLastError = true)]
     public static extern int Ftruncate(int fd, IntPtr length);

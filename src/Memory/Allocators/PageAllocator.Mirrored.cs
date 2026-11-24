@@ -206,9 +206,40 @@ public unsafe partial struct PageAllocator
                 0,
             };
 
-        int fd = Libc.MemfdCreate(name, 0);
-        if (fd < 0)
-            return null;
+        int fd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            byte* template =
+                stackalloc byte[] {
+                    (byte)'/',
+                    (byte)'t',
+                    (byte)'m',
+                    (byte)'p',
+                    (byte)'/',
+                    (byte)'z',
+                    (byte)'a',
+                    (byte)'m',
+                    (byte)'_',
+                    (byte)'X',
+                    (byte)'X',
+                    (byte)'X',
+                    (byte)'X',
+                    (byte)'X',
+                    (byte)'X',
+                    0,
+                };
+            fd = Libc.Mkstemp(template);
+            if (fd < 0)
+                return null;
+
+            Libc.Unlink(template);
+        }
+        else
+        {
+            fd = Libc.MemfdCreate(name, 0);
+            if (fd < 0)
+                return null;
+        }
 
         if (Libc.Ftruncate(fd, (NativeInt)alignedSize) != 0)
         {
@@ -221,7 +252,7 @@ public unsafe partial struct PageAllocator
                 null,
                 (NativeUInt)(uint)(alignedSize * 2),
                 PosixMemoryProt.PROT_NONE,
-                PosixMemoryFlags.MAP_PRIVATE | PosixMemoryFlags.MAP_ANONYMOUS,
+                PosixMemoryFlags.MAP_PRIVATE | _mapAnonymousFlag,
                 -1,
                 (NativeInt)0
             );

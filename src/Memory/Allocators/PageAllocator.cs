@@ -5,6 +5,7 @@ using Memory.Native.Posix.Enums;
 using Memory.Native.Windows;
 using Memory.Native.Windows.Enums;
 using Memory.Native.Windows.Structs;
+using Memory.Native.Windows.Structs;
 #if NET6_0_OR_GREATER
 using NativeUInt = nuint;
 using NativeInt = nint;
@@ -33,11 +34,19 @@ public unsafe partial struct PageAllocator
     /// </summary>
     public static readonly ulong PageAlignmentMask;
 
+    private static readonly PosixMemoryFlags _mapAnonymousFlag = RuntimeInformation.IsOSPlatform(
+        OSPlatform.OSX
+    )
+        ? PosixMemoryFlags.MAP_ANON_OSX
+        : PosixMemoryFlags.MAP_ANONYMOUS;
+
     static PageAllocator()
     {
         if (!Environment.Is64BitProcess)
         {
-            throw new PlatformNotSupportedException("ZeroAlloc.Memory requires a 64-bit (x64 or ARM64) process.");
+            throw new PlatformNotSupportedException(
+                "ZeroAlloc.Memory requires a 64-bit (x64 or ARM64) process."
+            );
         }
 
         int pageSize = 4096;
@@ -101,7 +110,7 @@ public unsafe partial struct PageAllocator
                 null,
                 (NativeUInt)(uint)pageAlignedBytes,
                 PosixMemoryProt.PROT_NONE,
-                PosixMemoryFlags.MAP_PRIVATE | PosixMemoryFlags.MAP_ANONYMOUS,
+                PosixMemoryFlags.MAP_PRIVATE | _mapAnonymousFlag,
                 -1,
                 (NativeInt)0
             );
