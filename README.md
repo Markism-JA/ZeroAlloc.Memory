@@ -13,9 +13,10 @@ Compiled as **`AnyCPU`** and tested in CI across **64-bit `x64` and `ARM64`** (`
 ## Origin & Intent
 
 `ZeroAlloc.Memory` was originally built as the memory and IPC foundation for a high-tickrate distributed game/simulation engine (*Echoes of Bathala*) where:
+
 * **Gen0/Gen2 GC pauses** in hot simulation and networking loops were unacceptable,
 * **Variable-length ring buffers** needed contiguous `Span<byte>` reads/writes across wrap-around boundaries without split copies, and
-* **One shared codebase** had to run identically on `.NET 10` Linux servers (`x64`/`ARM64`) and `netstandard2.1` Unity clients.
+* A single memory foundation had to run identically across .NET 10 Linux servers (x64/ARM64) and netstandard2.1 Unity clients.
 
 ---
 
