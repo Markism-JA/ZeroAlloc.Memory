@@ -6,7 +6,16 @@
 
 Zero-allocation unmanaged memory allocators, linear arenas, virtual-memory mirrored ring buffers, and native collections for **.NET 10** and **`netstandard2.1`** (Unity / client / server).
 
-Built as **`AnyCPU`** and tested across **64-bit `x64` and `ARM64`** (Linux, Windows, and macOS / Apple Silicon).
+Compiled as **`AnyCPU`** and tested in CI across **64-bit `x64` and `ARM64`** (`linux-x64`, `linux-arm64`, `win-x64`, `osx-arm64`).
+
+---
+
+## Origin & Intent
+
+`ZeroAlloc.Memory` was originally built as the memory and IPC foundation for a high-tickrate distributed game/simulation engine (*Echoes of Bathala*) where:
+* **Gen0/Gen2 GC pauses** in hot simulation and networking loops were unacceptable,
+* **Variable-length ring buffers** needed contiguous `Span<byte>` reads/writes across wrap-around boundaries without split copies, and
+* **One shared codebase** had to run identically on `.NET 10` Linux servers (`x64`/`ARM64`) and `netstandard2.1` Unity clients.
 
 ---
 
@@ -16,27 +25,26 @@ Built as **`AnyCPU`** and tested across **64-bit `x64` and `ARM64`** (Linux, Win
 dotnet add package ZeroAlloc.Memory
 ```
 
-> **Runtime Requirement:** `ZeroAlloc.Memory` is compiled as `AnyCPU` for maximum portability across `x64` and `ARM64`, and requires a **64-bit process** (`Environment.Is64BitProcess == true`).
+---
+
+## When to Use (and When NOT to Use)
+
+| Use `ZeroAlloc.Memory` When… | Do **NOT** Use When… |
+| :--- | :--- |
+| Standard `ArrayPool<T>`, `Dictionary<K,V>`, or `Channel<T>` causes measurable GC pauses in hot loops. | Standard .NET BCL collections already meet your latency budget. |
+| You store `unmanaged` structs or raw byte frames with deterministic tick/frame lifetimes. | You need to store managed reference types (`class`, `string`). |
+| You have **strictly 1P/1C** (`SpscRing`, `MirroredSpscRing`) or **NP/1C** (`BoundedMpscRing`, `MirroredMpscRing`) thread topologies. | You have **multiple concurrent consumers** (MPMC is intentionally excluded). |
+
+See the full **[Collections & Arenas Decision Guide](./docs/collections-guide.md)** and **[Architecture & Memory Model](./docs/architecture.md)**.
 
 ---
 
-## What’s Included
+## Safety Contract & Known Limitations
 
-* **Allocators (`Memory.Allocators`)**
-  * `HeapAllocator` — Cache-line aligned unmanaged heap allocations (`NativeMemory.AlignedAlloc` on .NET 6+, Unity `UnsafeUtility.Malloc`, or OS fallbacks).
-  * `PageAllocator` & `PageAllocator.Mirrored` — OS virtual memory reserve/commit/decommit and double-mapped circular ring-buffer virtual memory across Windows, Linux, and macOS (`4KB` and `16KB` page sizes).
-* **Arenas (`Memory.Arena`)**
-  * `UnmanagedLinearArena` — Fast bump-pointer arena allocator for frame/tick-scoped scratch allocations with zero GC pressure.
-  * `UnmanagedArrayTrack` — Contiguous unmanaged array tracks backed by arenas.
-* **Lock-Free & Native Collections (`Memory.Collections`)**
-  * `SpscRing` / `NativeSpscRing` — Cache-line padded single-producer/single-consumer ring buffer.
-  * `MirroredSpscRing` & `MirroredMpscRing` — Virtual-memory mirrored variable-length block ring buffers (contiguous wrap-around reads/writes without split copies).
-  * `BoundedMpscRing` — Bounded multi-producer/single-consumer ring buffer.
-  * `FlatMap` / `VirtualMap` / `MonotonicFlatMap` / `MonotonicVirtualMap` — Open-addressed unmanaged hash maps and monotonic lookup tables.
-  * `CircularWindow` — Fixed-capacity sliding window over unmanaged memory.
-* **Layout & Utilities (`Memory.Layout`, `Memory.Utilities`)**
-  * `UnmanagedPage` / `UnmanagedVirtualPage` — Explicit page-carving primitives.
-  * `BitOperation`, `MemoryLayout`, `DebugMemoryGuard`.
+1. **64-Bit Process Required:** Built as `AnyCPU` for `x64` and `ARM64` portability; 32-bit processes (`x86`/`arm32`) are unsupported and throw `PlatformNotSupportedException` in `PageAllocator`.
+2. **Manual Lifetime (`IDisposable`):** Value-type native handles and wrappers do not rely on GC finalizers for hot-path cleanup. Failing to call `Dispose()` leaks unmanaged/virtual memory.
+3. **Thread-Topology Guarantees:** `SpscRing` and `MirroredSpscRing` are **strictly Single-Producer / Single-Consumer**. Calling `TryEnqueue`/`TryWrite` from multiple threads requires `BoundedMpscRing` or `MirroredMpscRing`.
+4. **Debug vs. Release Guards:** `UnmanagedPage` / `DebugMemoryGuard` trailing canaries (`0xDEADBEEF`) catch buffer overruns in `Debug` builds and compile out to zero overhead in `Release`.
 
 ---
 
@@ -47,18 +55,11 @@ using Memory.Arena;
 using Memory.Collections.Spsc;
 
 // 1. Frame/tick-scoped linear arena (0 GC allocations)
-var arena = new UnmanagedLinearArena(capacityBytes: 64 * 1024);
-try
-{
-    int* buffer = arena.Allocate<int>(128);
-    buffer[0] = 42;
-}
-finally
-{
-    arena.Dispose();
-}
+using var arena = new UnmanagedLinearArena(capacityBytes: 64 * 1024);
+int* buffer = arena.Allocate<int>(128);
+buffer[0] = 42;
 
-// 2. Cache-padded SPSC ring buffer
+// 2. Cache-padded SPSC ring buffer (strictly 1 producer, 1 consumer)
 using var ring = new SpscRing<long>(capacity: 1024);
 ring.TryEnqueue(123456L);
 ring.TryDequeue(out long value);
@@ -66,10 +67,22 @@ ring.TryDequeue(out long value);
 
 ---
 
+## Benchmarks (`.NET 10 X64`, `0 B` Managed Allocation)
+
+![FlatMap vs Dictionary Latency](./docs/benchmarks/flatmap_vs_dictionary.png)
+
+* **`FlatMap` / `NativeFlatMap` vs `Dictionary<K,V>` (`10,000` keys):** `276 µs` vs `759 µs` on hits (**2.75× faster**), `175 µs` vs `855 µs` on in-place mutation (**4.88× faster**), `0 B` allocated. *(Note: dense full-table iteration remains faster in `Dictionary` — see full tradeoffs.)*
+* **`UnmanagedLinearArena` (`10,000` batch slices):** `4,101 ns` (`0.41 ns/item`, `0 B` allocated).
+* **`SpscRing` (`64B` zero-copy round-trip):** `269.8 ns`, `0 B` allocated.
+
+Full BenchmarkDotNet tables & reproduction commands: **[docs/benchmarks/README.md](./docs/benchmarks/README.md)**
+
+---
+
 ## Building, Testing & Benchmarking
 
 ```bash
-# Run full unit & integration test suite
+# Run full unit & concurrency stress suite (223 tests)
 dotnet test -c Release
 
 # Verify netstandard2.1 compatibility
