@@ -1,6 +1,6 @@
 # Benchmark Results & Performance Analysis
 
-Measured with **BenchmarkDotNet v0.15.8** on **Linux (Arch Linux)**, `11th Gen Intel Core i3-1115G4` (base 3.00 GHz, turbo disabled / capped at `1.59 GHz` via `bench-setup.sh`), `.NET 10.0.2 (X64 RyuJIT x86-64-v4)`, `[MemoryDiagnoser]`.
+Measured with **BenchmarkDotNet v0.15.8** on **Linux (Arch Linux)**, `11th Gen Intel Core i3-1115G4` (CPU governor set to `performance`, Intel Turbo Boost disabled and frequency locked at `1.59 GHz`, NMI watchdog and ASLR disabled for deterministic low-jitter measurement), `.NET 10.0.2 (X64 RyuJIT x86-64-v4)`, `[MemoryDiagnoser]`.
 
 Reproduce locally:
 
