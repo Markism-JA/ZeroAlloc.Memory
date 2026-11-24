@@ -15,6 +15,7 @@ namespace Memory.Collections.BoundedMpsc;
 public unsafe struct NativeBoundedMpscRing<T>
     where T : unmanaged
 {
+    /// <summary>Maximum allowed capacity in slots (1 billion).</summary>
     public const ulong MaxAllowedCapacity = 0x40000000UL; // 1 Billion slots
 
     private readonly long _capacity;
@@ -324,12 +325,14 @@ public unsafe struct NativeBoundedMpscRing<T>
         }
     }
 
+    /// <summary>Begins a zero-allocation batch reader over up to <paramref name="maxBatchSize"/> committed items.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BatchReader BeginBatch(NativeBoundedMpscRing<T>* ring, int maxBatchSize = 32)
     {
         return new BatchReader(ring, maxBatchSize);
     }
 
+    /// <summary>Stack-allocated ref-struct reader that amortizes consumer head publication across a batch.</summary>
     public ref struct BatchReader
     {
         private readonly NativeBoundedMpscRing<T>* _ring;
@@ -337,6 +340,7 @@ public unsafe struct NativeBoundedMpscRing<T>
         private long _localHead;
         private int _readCount;
 
+        /// <summary>Gets the number of items read so far in this batch.</summary>
         public readonly int ReadCount => _readCount;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -348,6 +352,7 @@ public unsafe struct NativeBoundedMpscRing<T>
             _readCount = 0;
         }
 
+        /// <summary>Attempts to read the next committed item in the batch.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryReadNext(out T item)
         {
@@ -374,6 +379,7 @@ public unsafe struct NativeBoundedMpscRing<T>
             return true;
         }
 
+        /// <summary>Publishes the accumulated consumer head sequence.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose()
         {
@@ -386,6 +392,7 @@ public unsafe struct NativeBoundedMpscRing<T>
 
     #endregion
 
+    /// <summary>Returns the raw unmanaged pointer to the backing slot array.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly BoundedMpscSlot<T>* DangerousGetSlots() => _slots;
 }

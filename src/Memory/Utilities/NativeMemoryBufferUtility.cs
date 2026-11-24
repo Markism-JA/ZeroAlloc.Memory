@@ -2,6 +2,9 @@ using System.Runtime.CompilerServices;
 
 namespace Memory.Utilities;
 
+/// <summary>
+/// Cross-runtime unmanaged memory copy and zeroing helpers dispatching to SIMD/intrinsic primitives.
+/// </summary>
 public static unsafe class NativeMemoryBufferUtility
 {
     /// <summary>

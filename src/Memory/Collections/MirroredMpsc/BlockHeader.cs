@@ -13,6 +13,7 @@ namespace Memory.Collections.MirroredMpsc;
 [StructLayout(LayoutKind.Explicit, Size = 16)]
 public struct BlockHeader
 {
+    /// <summary>Fixed byte size of <see cref="BlockHeader"/> (16 bytes).</summary>
     public const int HeaderSize = 16;
 
     /// <summary>

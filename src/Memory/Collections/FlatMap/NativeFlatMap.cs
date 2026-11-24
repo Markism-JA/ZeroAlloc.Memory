@@ -15,6 +15,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
     where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {
+    /// <summary>Maximum allowed physical slot capacity (536M slots).</summary>
     public const ulong MaxAllowedCapacity = 0x20000000UL; // 536M entries
     private const int CacheLineAlignment = 64;
 
@@ -26,17 +27,29 @@ public unsafe struct NativeFlatMap<TKey, TValue>
 
     #region State & Metrics
 
+    /// <summary>Gets the number of active entries stored in the map.</summary>
     public readonly int Count => _count;
+
+    /// <summary>Gets the total slot capacity of the hash table.</summary>
     public readonly int Capacity => _capacity;
+
+    /// <summary>Gets the maximum key count at the 50% load factor threshold.</summary>
     public readonly int MaxCount => _maxCount;
+
+    /// <summary>Returns <c>true</c> if the map contains zero entries.</summary>
     public readonly bool IsEmpty => _count == 0;
+
+    /// <summary>Returns <c>true</c> if the map has reached <see cref="MaxCount"/>.</summary>
     public readonly bool IsFull => _count >= _maxCount;
+
+    /// <summary>Gets the raw unmanaged pointer to the backing entry array.</summary>
     public readonly FlatMapEntry<TKey, TValue>* EntriesPtr => _entries;
 
     #endregion
 
     #region Allocation & Lifecycle
 
+    /// <summary>Allocates a new <see cref="NativeFlatMap{TKey, TValue}"/> sized for at least <paramref name="targetKeyCapacity"/> keys.</summary>
     public static NativeFlatMap<TKey, TValue>* Allocate(int targetKeyCapacity = 1024)
     {
         if (targetKeyCapacity <= 0)
@@ -107,6 +120,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         _entries = entries;
     }
 
+    /// <summary>Releases the native entry buffer and control block.</summary>
     public static void Free(NativeFlatMap<TKey, TValue>* map)
     {
         if (map == null)
@@ -120,6 +134,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         HeapAllocator.Free(map);
     }
 
+    /// <summary>Clears all entries in the map by zeroing the entry buffer.</summary>
     public void Clear()
     {
         if (_count == 0)
@@ -134,6 +149,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
 
     #region Fast Lookups & Insertions
 
+    /// <summary>Attempts to retrieve the value associated with <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool TryGetValue(TKey key, out TValue value)
     {
@@ -148,6 +164,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         return false;
     }
 
+    /// <summary>Determines whether <paramref name="key"/> exists in the map.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool ContainsKey(TKey key)
     {
@@ -155,6 +172,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         return exists;
     }
 
+    /// <summary>Attempts to insert <paramref name="key"/> and <paramref name="value"/> without overwriting existing keys.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAdd(TKey key, in TValue value)
     {
@@ -173,6 +191,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         return true;
     }
 
+    /// <summary>Returns a reference to an existing entry's value, or inserts a default entry and returns a reference to it.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue GetValueRefOrAddDefault(TKey key, out bool exists, out bool success)
     {
@@ -201,6 +220,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
 
     #region Backward-Shift Deletion (Robin Hood / Knuth)
 
+    /// <summary>Removes <paramref name="key"/> using circular backward-shift deletion.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key)
     {
@@ -264,6 +284,7 @@ public unsafe struct NativeFlatMap<TKey, TValue>
         return slot;
     }
 
+    /// <summary>Computes a SplitMix64-mixed 32-bit hash for an unmanaged <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint HashKey(TKey key)
     {

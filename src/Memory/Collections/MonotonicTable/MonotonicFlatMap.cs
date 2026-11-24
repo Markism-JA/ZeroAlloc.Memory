@@ -19,30 +19,35 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
 
     #region State & Metrics
 
+    /// <summary>Gets the number of active entries stored in the table.</summary>
     public int Count
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeTable != null ? _nativeTable->Count : 0;
     }
 
+    /// <summary>Gets the total slot capacity of the backing flat map.</summary>
     public int Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeTable != null ? _nativeTable->Capacity : 0;
     }
 
+    /// <summary>Gets the maximum usable key count before load-factor saturation.</summary>
     public int MaxCount
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeTable != null ? _nativeTable->MaxCount : 0;
     }
 
+    /// <summary>Returns <c>true</c> if the table contains zero entries or is disposed.</summary>
     public bool IsEmpty
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeTable == null || _nativeTable->IsEmpty;
     }
 
+    /// <summary>Returns <c>true</c> if the table has reached <see cref="MaxCount"/>.</summary>
     public bool IsFull
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -51,12 +56,14 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
 
     #endregion
 
+    /// <summary>Initializes a new <see cref="MonotonicFlatMap{TKey, TValue}"/> with at least <paramref name="targetKeyCapacity"/> key capacity.</summary>
     public MonotonicFlatMap(int targetKeyCapacity = 1024)
     {
         _nativeTable = NativeMonotonicFlatMap<TKey, TValue>.Allocate(targetKeyCapacity);
         _isDisposed = 0;
     }
 
+    /// <summary>Returns the raw pointer to the underlying native control block for C-ABI interop.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NativeMonotonicFlatMap<TKey, TValue>* DangerousGetNativePointer()
     {
@@ -68,6 +75,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
 
     #region Operations
 
+    /// <summary>Attempts to retrieve the value and monotonic sequence associated with <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGet(TKey key, out TValue value, out ulong sequence)
     {
@@ -77,6 +85,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
         return _nativeTable->TryGet(key, out value, out sequence);
     }
 
+    /// <summary>Determines whether <paramref name="key"/> exists in the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(TKey key)
     {
@@ -86,6 +95,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
         return _nativeTable->ContainsKey(key);
     }
 
+    /// <summary>Attempts to upsert <paramref name="key"/> if <paramref name="sequence"/> dominates the stored sequence.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MonotonicResult TryPut(
         TKey key,
@@ -100,6 +110,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
         return _nativeTable->TryPut(key, in value, sequence, allowEqualSequence);
     }
 
+    /// <summary>Removes <paramref name="key"/> from the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key)
     {
@@ -109,6 +120,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
         return _nativeTable->Remove(key);
     }
 
+    /// <summary>Clears all entries from the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
@@ -122,6 +134,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
 
     #region Enumeration
 
+    /// <summary>Returns a zero-allocation ref-struct enumerator over occupied entries.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator()
     {
@@ -132,6 +145,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
         return new Enumerator(backing->EntriesPtr, backing->Capacity);
     }
 
+    /// <summary>Zero-allocation enumerator over occupied <see cref="MonotonicEntry{TValue}"/> slots.</summary>
     public ref struct Enumerator
     {
         private readonly FlatMapEntry<TKey, MonotonicEntry<TValue>>* _entries;
@@ -146,6 +160,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
             _index = -1;
         }
 
+        /// <summary>Advances the enumerator to the next occupied slot.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -157,6 +172,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
             return false;
         }
 
+        /// <summary>Gets a readonly reference to the current occupied entry.</summary>
         public readonly ref readonly FlatMapEntry<TKey, MonotonicEntry<TValue>> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -166,6 +182,7 @@ public sealed unsafe class MonotonicFlatMap<TKey, TValue> : IDisposable
 
     #endregion
 
+    /// <summary>Releases the native heap buffer and control block.</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)

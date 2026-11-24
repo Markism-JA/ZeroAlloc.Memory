@@ -15,36 +15,42 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
 
     #region State & Metrics
 
+    /// <summary>Gets the total element capacity of the ring buffer.</summary>
     public long Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeRing != null ? _nativeRing->Capacity : 0;
     }
 
+    /// <summary>Gets the approximate number of unconsumed items currently in the ring.</summary>
     public long OccupiedCount
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeRing != null ? _nativeRing->OccupiedCount : 0;
     }
 
+    /// <summary>Gets the remaining free element slots available before backpressure occurs.</summary>
     public long FreeCount
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeRing != null ? _nativeRing->FreeCount : 0;
     }
 
+    /// <summary>Returns <c>true</c> if the ring buffer contains no unconsumed items or is disposed.</summary>
     public bool IsEmpty
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeRing == null || _nativeRing->IsEmpty;
     }
 
+    /// <summary>Gets the current consumer head sequence counter.</summary>
     public long HeadSequence
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeRing != null ? _nativeRing->HeadSequence : 0;
     }
 
+    /// <summary>Gets the current producer tail sequence counter.</summary>
     public long TailSequence
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -53,6 +59,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
 
     #endregion
 
+    /// <summary>Initializes a new <see cref="BoundedMpscRing{T}"/> with at least <paramref name="elementCapacity"/> slots (rounded up to a power of two).</summary>
     public BoundedMpscRing(int elementCapacity = 16384)
     {
         _nativeRing = NativeBoundedMpscRing<T>.Allocate(elementCapacity);
@@ -73,6 +80,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
 
     #region Enqueue & Dequeue Operations
 
+    /// <summary>Attempts to enqueue <paramref name="item"/> concurrently from any producer thread.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryWrite(in T item)
     {
@@ -82,6 +90,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
         return _nativeRing->TryWrite(in item);
     }
 
+    /// <summary>Attempts to dequeue the next committed item on the single consumer thread.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryRead(out T item)
     {
@@ -91,6 +100,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
         return _nativeRing->TryRead(out item);
     }
 
+    /// <summary>Drains up to <paramref name="maxBatchSize"/> committed items into <paramref name="consumer"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int DrainBatch<TConsumer>(ref TConsumer consumer, int maxBatchSize = 32)
         where TConsumer : struct, IValueConsumer<T>
@@ -101,6 +111,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
         return _nativeRing->DrainBatch(ref consumer, maxBatchSize);
     }
 
+    /// <summary>Begins a ref-struct batch reader over up to <paramref name="maxBatchSize"/> committed items.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NativeBoundedMpscRing<T>.BatchReader BeginBatch(int maxBatchSize = 32)
     {
@@ -112,6 +123,7 @@ public sealed unsafe class BoundedMpscRing<T> : IDisposable
 
     #endregion
 
+    /// <summary>Releases the underlying native ring control block and buffer.</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)

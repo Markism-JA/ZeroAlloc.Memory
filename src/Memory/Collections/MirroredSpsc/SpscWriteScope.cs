@@ -51,6 +51,7 @@ public ref struct SpscWriteScope
         }
     }
 
+    /// <summary>Commits the reserved write block with a store-release barrier.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public unsafe void Dispose()
     {

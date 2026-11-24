@@ -70,6 +70,7 @@ public sealed unsafe class MirroredSpscRing : IDisposable
 
     #endregion
 
+    /// <summary>Initializes a new <see cref="MirroredSpscRing"/> backed by mirrored virtual memory.</summary>
     public MirroredSpscRing(long byteCapacity = 2 * 1024 * 1024)
     {
         _nativeRing = NativeMirroredSpscRing.Allocate(byteCapacity);
@@ -307,6 +308,7 @@ public sealed unsafe class MirroredSpscRing : IDisposable
 
     #endregion
 
+    /// <summary>Releases the mirrored virtual memory buffer and native control block.</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)

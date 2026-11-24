@@ -3,6 +3,9 @@ using Memory.Arena;
 
 namespace Memory.Layout;
 
+/// <summary>
+/// Extension methods for carving typed <see cref="UnmanagedLinearArena{T}"/> instances out of an <see cref="UnmanagedVirtualPage"/>.
+/// </summary>
 public static unsafe class VirtualPageCarveExtensions
 {
     /// <summary>

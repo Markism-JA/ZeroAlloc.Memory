@@ -18,6 +18,12 @@ namespace Memory.Allocators;
 /// </summary>
 public unsafe struct HeapAllocator
 {
+    /// <summary>
+    /// Allocates an aligned block of unmanaged memory on the C-heap.
+    /// </summary>
+    /// <param name="bytes">The number of bytes to allocate. Returns <c>null</c> if less than or equal to zero.</param>
+    /// <param name="alignment">The desired byte alignment (normalized to a power of two at least <c>sizeof(void*)</c>).</param>
+    /// <returns>A pointer to the allocated unmanaged block, or <c>null</c> if <paramref name="bytes"/> is non-positive or allocation fails.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Allocate(int bytes, int alignment)
     {
@@ -39,6 +45,10 @@ public unsafe struct HeapAllocator
 #endif
     }
 
+    /// <summary>
+    /// Frees an unmanaged memory block previously allocated by <see cref="Allocate"/>.
+    /// </summary>
+    /// <param name="ptr">The pointer to free. No-op if <c>null</c>.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Free(void* ptr)
     {
@@ -57,6 +67,9 @@ public unsafe struct HeapAllocator
 #endif
     }
 
+    /// <summary>
+    /// Normalizes a requested byte alignment to a valid power of two at least <c>sizeof(void*)</c>.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int NormalizeAlignment(int alignment)
     {
@@ -69,6 +82,9 @@ public unsafe struct HeapAllocator
 
     #region Backward Compatibility & Fallback Allocator
 
+    /// <summary>
+    /// Platform-specific fallback allocator using <c>VirtualAlloc</c> on Windows or <c>posix_memalign</c> on POSIX.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Allocate_Fallback(int bytes, int alignment)
     {
@@ -94,6 +110,9 @@ public unsafe struct HeapAllocator
         }
     }
 
+    /// <summary>
+    /// Frees a block allocated via <see cref="Allocate_Fallback"/>.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Free_Fallback(void* ptr)
     {

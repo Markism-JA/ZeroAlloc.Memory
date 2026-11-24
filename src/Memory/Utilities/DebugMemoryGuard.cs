@@ -3,8 +3,12 @@ using System.Runtime.CompilerServices;
 
 namespace Memory.Utilities;
 
+/// <summary>
+/// Debug-only memory poisoning and uninitialized-read guard utilities.
+/// </summary>
 public static unsafe class DebugMemoryGuard
 {
+    /// <summary>The byte pattern (<c>0xCC</c>) written into uninitialized debug allocations.</summary>
     public const byte PoisonByte = 0xCC;
 
     /// <summary>

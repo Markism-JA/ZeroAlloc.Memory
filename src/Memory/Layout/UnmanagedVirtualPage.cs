@@ -69,6 +69,10 @@ public unsafe struct UnmanagedVirtualPage : IUnmanagedPage
         get => _header != null ? _header->CommittedOffset : 0;
     }
 
+    /// <summary>
+    /// Reserves a virtual address range of at least <paramref name="byteCapacity"/> bytes (rounded up to the OS page size).
+    /// </summary>
+    /// <param name="byteCapacity">The minimum virtual capacity in bytes. Must be strictly greater than zero.</param>
     public UnmanagedVirtualPage(int byteCapacity)
     {
         if (byteCapacity <= 0)

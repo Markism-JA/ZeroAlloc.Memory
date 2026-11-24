@@ -15,24 +15,28 @@ public sealed unsafe class CircularWindow<T> : IDisposable
 
     #region State & Metrics
 
+    /// <summary>Gets the total element capacity of the circular window.</summary>
     public int Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeWindow != null ? _nativeWindow->Capacity : 0;
     }
 
+    /// <summary>Gets the bitmask (<c>Capacity - 1</c>) used for power-of-two index wrapping.</summary>
     public int Mask
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeWindow != null ? _nativeWindow->Mask : 0;
     }
 
+    /// <summary>Gets the monotonic write cursor sequence counter.</summary>
     public long WriteCursor
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeWindow != null ? _nativeWindow->WriteCursor : 0;
     }
 
+    /// <summary>Gets the raw unmanaged pointer to the underlying slot array.</summary>
     public CircularWindowSlot<T>* SlotsPtr
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -45,6 +49,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         }
     }
 
+    /// <summary>Gets the raw unmanaged pointer to the monotonic write cursor.</summary>
     public long* CursorPtr
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,6 +64,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
 
     #endregion
 
+    /// <summary>Initializes a new <see cref="CircularWindow{T}"/> with at least <paramref name="capacity"/> slots (rounded up to a power of two).</summary>
     public CircularWindow(int capacity = 16384)
     {
         _nativeWindow = NativeCircularWindow<T>.Allocate(capacity);
@@ -79,6 +85,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
 
     #region Append Operations
 
+    /// <summary>Appends a single element to the window, overwriting the oldest slot when full.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Append(in T item)
     {
@@ -88,6 +95,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         _nativeWindow->Append(in item);
     }
 
+    /// <summary>Appends <paramref name="count"/> contiguous unmanaged elements to the window.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AppendBatch(T* items, int count)
     {
@@ -97,6 +105,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         _nativeWindow->AppendBatch(items, count);
     }
 
+    /// <summary>Appends a span of elements to the window.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AppendBatch(ReadOnlySpan<T> items)
     {
@@ -116,6 +125,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
 
     #region Read & Query Operations
 
+    /// <summary>Reads up to <paramref name="maxCount"/> recent consistent elements into <paramref name="dest"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int ReadLatest(T* dest, int maxCount)
     {
@@ -125,6 +135,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         return _nativeWindow->ReadLatest(dest, maxCount);
     }
 
+    /// <summary>Reads up to <c>destination.Length</c> recent consistent elements into <paramref name="destination"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int ReadLatest(Span<T> destination)
     {
@@ -140,6 +151,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         }
     }
 
+    /// <summary>Scans the window and copies elements matching <paramref name="predicate"/> into <paramref name="dest"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int QueryFiltered(
         T* dest,
@@ -154,6 +166,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
         return _nativeWindow->QueryFiltered(dest, maxCount, filterContext, predicate);
     }
 
+    /// <summary>Scans the window and copies elements matching <paramref name="predicate"/> into <paramref name="destination"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int QueryFiltered(
         Span<T> destination,
@@ -180,6 +193,7 @@ public sealed unsafe class CircularWindow<T> : IDisposable
 
     #endregion
 
+    /// <summary>Releases the underlying native circular window and its backing buffer.</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)

@@ -13,6 +13,7 @@ namespace Memory.Collections.MirroredMpsc;
 public unsafe struct NativeMirroredMpscRing
 {
     private const ulong _windowsAllocationGranularity = 64 * 1024; // 64 KB hardware boundary
+    /// <summary>Maximum allowed mirrored ring capacity in bytes (1 GB).</summary>
     public const ulong MaxAllowedCapacity = 0x40000000UL; // 1 GB limit
 
     private readonly long _bufferSize;
@@ -163,6 +164,7 @@ public unsafe struct NativeMirroredMpscRing
         _cachedTail.Value = 8;
     }
 
+    /// <summary>Releases the mirrored virtual memory buffer and native control block.</summary>
     public static void Free(NativeMirroredMpscRing* ring)
     {
         if (ring == null)
@@ -184,6 +186,7 @@ public unsafe struct NativeMirroredMpscRing
 
     #region Multi-Producer Concurrent Writes
 
+    /// <summary>Attempts to write up to two unmanaged segments as a single contiguous frame concurrently.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryWrite(
         byte* segment1Src,
@@ -245,6 +248,7 @@ public unsafe struct NativeMirroredMpscRing
     /// <summary>
     /// Writes a Span slice concurrently into the MPSC ring buffer.
     /// </summary>
+    /// <summary>Attempts to write up to two unmanaged segments as a single contiguous frame concurrently.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryWrite(ReadOnlySpan<byte> payload)
     {
@@ -406,6 +410,7 @@ public unsafe struct NativeMirroredMpscRing
         }
     }
 
+    /// <summary>Begins a zero-allocation batch reader over up to <paramref name="maxBatchSize"/> committed frames.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BatchReader BeginBatch(NativeMirroredMpscRing* ring, int maxBatchSize = 32)
     {
@@ -421,6 +426,7 @@ public unsafe struct NativeMirroredMpscRing
         return new BatchReader(ring, currentHead, cachedTail, maxBatchSize);
     }
 
+    /// <summary>Stack-allocated ref-struct reader that amortizes consumer head publication across a batch.</summary>
     public ref struct BatchReader
     {
         private readonly NativeMirroredMpscRing* _ring;
@@ -430,7 +436,10 @@ public unsafe struct NativeMirroredMpscRing
         private int _readCount;
         private bool _isAborted;
 
+        /// <summary>Gets the number of frames read so far in this batch.</summary>
         public readonly int ReadCount => _readCount;
+
+        /// <summary>Gets the local uncommitted head sequence.</summary>
         public readonly long LocalHead => _localHead;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -449,6 +458,7 @@ public unsafe struct NativeMirroredMpscRing
             _isAborted = false;
         }
 
+        /// <summary>Attempts to read the next committed frame in the batch.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryReadNext(out BlockView view)
         {
@@ -478,12 +488,14 @@ public unsafe struct NativeMirroredMpscRing
             return true;
         }
 
+        /// <summary>Aborts the batch without advancing the consumer head.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Abort()
         {
             _isAborted = true;
         }
 
+        /// <summary>Publishes the accumulated head sequence if not aborted.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose()
         {
@@ -496,10 +508,11 @@ public unsafe struct NativeMirroredMpscRing
 
     #endregion
 
-
+    /// <summary>Returns the base virtual memory pointer of the mirrored buffer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly byte* DangerousGetBufferStart() => _bufferStart;
 
+    /// <summary>Returns the power-of-two byte mask (<c>Capacity - 1</c>) of the mirrored buffer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly long DangerousGetBufferMask() => _bufferMask;
 }

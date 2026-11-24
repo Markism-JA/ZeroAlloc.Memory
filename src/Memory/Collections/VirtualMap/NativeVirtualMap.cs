@@ -17,8 +17,13 @@ public unsafe struct NativeVirtualMap<TKey, TValue>
     where TKey : unmanaged, IEquatable<TKey>
     where TValue : unmanaged
 {
+    /// <summary>Default minimum key capacity (2,048 keys).</summary>
     public const int DefaultMinKeyCapacity = 2048;
+
+    /// <summary>Default minimum slot capacity (4,096 slots for 50% load factor headroom).</summary>
     public const int DefaultMinSlotCapacity = DefaultMinKeyCapacity * 2; // 4,096 slots (50% load factor headroom)
+
+    /// <summary>Absolute maximum reserved slot count (16,777,216 slots).</summary>
     public const int AbsoluteMaxSlotCount = 1 << 24; // 16,777,216 slots (~1GB virtual limit)
     private const int _cacheLineAlignment = 64;
 
@@ -479,6 +484,7 @@ public unsafe struct NativeVirtualMap<TKey, TValue>
         return slot;
     }
 
+    /// <summary>Computes a SplitMix64-mixed 32-bit hash for an unmanaged <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint HashKey(in TKey key)
     {

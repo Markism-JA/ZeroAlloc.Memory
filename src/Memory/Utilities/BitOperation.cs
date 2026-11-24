@@ -2,8 +2,13 @@ using System.Runtime.CompilerServices;
 
 namespace Memory.Utilities;
 
+/// <summary>
+/// Cross-target bit manipulation primitives with <c>System.Numerics.BitOperations</c> intrinsics on modern .NET
+/// and branchless fallbacks on <c>netstandard2.1</c>.
+/// </summary>
 public static class BitOperation
 {
+    /// <summary>Rounds a 32-bit unsigned integer up to the next power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint RoundUpToPowerOf2(uint value)
     {
@@ -20,6 +25,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Rounds a 64-bit unsigned integer up to the next power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong RoundUpToPowerOf2(ulong value)
     {
@@ -37,6 +43,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Rounds a 32-bit unsigned integer down to the nearest power of two (or <c>0</c> if <c>0</c>).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint RoundDownToPowerOf2(uint value)
     {
@@ -52,6 +59,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Rounds a 64-bit unsigned integer down to the nearest power of two (or <c>0</c> if <c>0</c>).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ulong RoundDownToPowerOf2(ulong value)
     {
@@ -68,6 +76,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Counts the number of set bits (population count) in a 32-bit unsigned integer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int PopCount(uint value)
     {
@@ -80,6 +89,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Counts the number of set bits (population count) in a 64-bit unsigned integer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int PopCount(ulong value)
     {
@@ -92,6 +102,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Returns <c>true</c> if <paramref name="value"/> is a positive power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPow2(int value)
     {
@@ -102,6 +113,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Returns <c>true</c> if <paramref name="value"/> is a non-zero power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPow2(uint value)
     {
@@ -112,6 +124,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Returns <c>true</c> if <paramref name="value"/> is a positive power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPow2(long value)
     {
@@ -122,6 +135,7 @@ public static class BitOperation
 #endif
     }
 
+    /// <summary>Returns <c>true</c> if <paramref name="value"/> is a non-zero power of two.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPow2(ulong value)
     {

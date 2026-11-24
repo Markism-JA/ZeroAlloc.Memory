@@ -16,6 +16,7 @@ public unsafe struct NativeMirroredSpscRing
 {
     private const ulong _windowsAllocationGranularity = 64 * 1024; // 64 kb hardware boundary
 
+    /// <summary>Maximum allowed mirrored ring capacity in bytes (1 GB).</summary>
     public const ulong MaxAllowedCapacity = 0x40000000UL; // 1 GB limit
 
     private readonly long _bufferSize;
@@ -162,6 +163,7 @@ public unsafe struct NativeMirroredSpscRing
 
     #endregion
 
+    /// <summary>Releases the mirrored virtual memory buffer and native control block.</summary>
     public static void Free(NativeMirroredSpscRing* ring)
     {
         if (ring == null)
@@ -616,6 +618,7 @@ public unsafe struct NativeMirroredSpscRing
         }
     }
 
+    /// <summary>Begins a zero-allocation batch reader over up to <paramref name="maxBatchSize"/> committed frames.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BatchReader BeginBatch(NativeMirroredSpscRing* ring, int maxBatchSize = 32)
     {
@@ -643,7 +646,10 @@ public unsafe struct NativeMirroredSpscRing
         private int _readCount;
         private bool _isAborted;
 
+        /// <summary>Gets the number of frames read so far in this batch.</summary>
         public readonly int ReadCount => _readCount;
+
+        /// <summary>Gets the local uncommitted head sequence.</summary>
         public readonly long LocalHead => _localHead;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -662,6 +668,7 @@ public unsafe struct NativeMirroredSpscRing
             _isAborted = false;
         }
 
+        /// <summary>Attempts to read the next committed frame in the batch.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryReadNext(out BlockView view)
         {
@@ -694,6 +701,7 @@ public unsafe struct NativeMirroredSpscRing
             _isAborted = true;
         }
 
+        /// <summary>Publishes the accumulated head sequence if not aborted.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose()
         {
@@ -706,9 +714,11 @@ public unsafe struct NativeMirroredSpscRing
 
     #endregion
 
+    /// <summary>Returns the base virtual memory pointer of the mirrored buffer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly byte* DangerousGetBufferStart() => _bufferStart;
 
+    /// <summary>Returns the power-of-two byte mask (<c>Capacity - 1</c>) of the mirrored buffer.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly long DangerousGetBufferMask() => _bufferMask;
 }

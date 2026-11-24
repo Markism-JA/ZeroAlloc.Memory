@@ -116,6 +116,7 @@ public unsafe struct NativeSpscRing<T>
         _cachedTail.Value = 0;
     }
 
+    /// <summary>Enqueues a single item by value on the single producer thread.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryEnqueue(in T item)
     {
@@ -137,6 +138,7 @@ public unsafe struct NativeSpscRing<T>
         return true;
     }
 
+    /// <summary>Dequeues a single item on the single consumer thread.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryDequeue(out T item)
     {
@@ -161,6 +163,7 @@ public unsafe struct NativeSpscRing<T>
         return true;
     }
 
+    /// <summary>Enqueues a span of elements using up to two contiguous block copies.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int EnqueueBatch(ReadOnlySpan<T> items)
     {
@@ -210,6 +213,7 @@ public unsafe struct NativeSpscRing<T>
         return count;
     }
 
+    /// <summary>Gets a direct pointer to the next readable element without advancing the head.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetReadPointer(out T* item)
     {
@@ -232,18 +236,21 @@ public unsafe struct NativeSpscRing<T>
         return true;
     }
 
+    /// <summary>Publishes one consumed element on the consumer head.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CommitRead()
     {
         Volatile.Write(ref _head.Value, _head.Value + 1);
     }
 
+    /// <summary>Publishes <paramref name="count"/> consumed elements on the consumer head.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CommitRead(int count)
     {
         Volatile.Write(ref _head.Value, _head.Value + count);
     }
 
+    /// <summary>Drains available elements into <paramref name="destinationBuffer"/> using up to two block copies.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Drain(Span<T> destinationBuffer)
     {
@@ -293,6 +300,7 @@ public unsafe struct NativeSpscRing<T>
         return toRead;
     }
 
+    /// <summary>Gets a direct pointer to the next writable slot without advancing the tail.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetWritePointer(out T* destination)
     {
@@ -315,6 +323,7 @@ public unsafe struct NativeSpscRing<T>
         return true;
     }
 
+    /// <summary>Publishes one written element on the producer tail.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CommitWrite()
     {

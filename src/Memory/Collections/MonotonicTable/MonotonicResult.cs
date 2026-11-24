@@ -1,5 +1,8 @@
 namespace Memory.Collections.MonotonicTable;
 
+/// <summary>
+/// Outcome of a sequence-guarded monotonic upsert operation.
+/// </summary>
 public enum MonotonicResult : byte
 {
     /// <summary>Write rejected: Candidate sequence is strictly older than the stored sequence.</summary>

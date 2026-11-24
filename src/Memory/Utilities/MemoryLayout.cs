@@ -8,6 +8,7 @@ namespace Memory.Utilities;
 /// </summary>
 public static class MemoryLayout
 {
+    /// <summary>Standard CPU cache-line size in bytes (64).</summary>
     public const int CacheLineBytes = 64;
     private const int CacheLineMask = CacheLineBytes - 1; // 63
 
@@ -35,6 +36,7 @@ public static class MemoryLayout
         return (bytes + CacheLineMask) & ~CacheLineMask;
     }
 
+    /// <summary>Rounds <paramref name="offset"/> up to the nearest <paramref name="alignment"/> boundary (must be a power of two).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int AlignUp(int offset, int alignment)
     {
@@ -42,6 +44,7 @@ public static class MemoryLayout
         return (offset + mask) & ~mask;
     }
 
+    /// <summary>Computes the cache-line aligned total size of <typeparamref name="TFixed"/> plus <paramref name="payloadBytes"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe int GetAlignedAllocationSize<TFixed>(int payloadBytes)
         where TFixed : unmanaged

@@ -9,6 +9,9 @@ namespace Memory.Collections.MonotonicTable;
 public readonly struct MonotonicEntry<TValue>(in TValue value, ulong sequence)
     where TValue : unmanaged
 {
+    /// <summary>The stored unmanaged payload.</summary>
     public readonly TValue Value = value;
+
+    /// <summary>The monotonic version/sequence scalar associated with this entry.</summary>
     public readonly ulong Sequence = sequence;
 }

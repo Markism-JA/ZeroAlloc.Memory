@@ -3,6 +3,9 @@ using Memory.Utilities;
 
 namespace Memory.Arena;
 
+/// <summary>
+/// Convenience extension methods for leasing typed cache-line aligned pointers and spans from an <see cref="UnmanagedLinearArena{T}"/>.
+/// </summary>
 public static unsafe class UnmanagedLinearArenaExtensions
 {
     /// <summary>

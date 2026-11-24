@@ -9,6 +9,7 @@ namespace Memory.Collections.MirroredSpsc;
 [StructLayout(LayoutKind.Sequential, Size = 8)]
 public readonly struct SpscWriteTicket
 {
+    /// <summary>Target tail sequence offset to publish on commit.</summary>
     public readonly long NewTail;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

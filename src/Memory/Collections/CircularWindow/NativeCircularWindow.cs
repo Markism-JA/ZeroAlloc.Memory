@@ -15,6 +15,7 @@ namespace Memory.Collections.CircularWindow;
 public unsafe struct NativeCircularWindow<T>
     where T : unmanaged
 {
+    /// <summary>Maximum allowed capacity in slots (1 billion).</summary>
     public const ulong MaxAllowedCapacity = 0x40000000UL; // 1 Billion slots
     private const int _cacheLineAlignment = 64;
 

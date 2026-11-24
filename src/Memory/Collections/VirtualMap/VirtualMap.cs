@@ -17,42 +17,49 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
 
     #region State & Metrics
 
+    /// <summary>Gets the number of active key-value pairs stored in the map.</summary>
     public int Count
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap != null ? _nativeMap->Count : 0;
     }
 
+    /// <summary>Gets the current committed slot capacity of the map.</summary>
     public int Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap != null ? _nativeMap->Capacity : 0;
     }
 
+    /// <summary>Gets the maximum key capacity before resizing.</summary>
     public int KeyCapacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap != null ? _nativeMap->KeyCapacity : 0;
     }
 
+    /// <summary>Gets the maximum virtual slot capacity reserved for the table.</summary>
     public int MaxSlotCapacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap != null ? _nativeMap->MaxSlotCapacity : 0;
     }
 
+    /// <summary>Gets the number of physical bytes currently committed by the OS for this map.</summary>
     public int CommittedBytes
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap != null ? _nativeMap->CommittedBytes : 0;
     }
 
+    /// <summary>Returns <c>true</c> if the map contains zero entries or is disposed.</summary>
     public bool IsEmpty
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _nativeMap == null || _nativeMap->IsEmpty;
     }
 
+    /// <summary>Returns <c>true</c> if the map has reached its load capacity.</summary>
     public bool IsFull
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,6 +68,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
 
     #endregion
 
+    /// <summary>Initializes a new <see cref="VirtualMap{TKey, TValue}"/> with at least <paramref name="initialKeyCapacity"/> key capacity.</summary>
     public VirtualMap(int initialKeyCapacity = NativeVirtualMap<TKey, TValue>.DefaultMinKeyCapacity)
     {
         _nativeMap = NativeVirtualMap<TKey, TValue>.Allocate(initialKeyCapacity);
@@ -81,6 +89,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
 
     #region Operations
 
+    /// <summary>Attempts to retrieve the value associated with <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetValue(in TKey key, out TValue value)
     {
@@ -90,6 +99,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return _nativeMap->TryGetValue(in key, out value);
     }
 
+    /// <summary>Determines whether <paramref name="key"/> exists in the map.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(in TKey key)
     {
@@ -99,6 +109,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return _nativeMap->ContainsKey(in key);
     }
 
+    /// <summary>Attempts to insert <paramref name="key"/> and <paramref name="value"/> without overwriting existing keys.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryAdd(in TKey key, in TValue value)
     {
@@ -108,6 +119,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return _nativeMap->TryAdd(in key, in value);
     }
 
+    /// <summary>Returns a reference to an existing entry's value, or inserts a default entry and returns a reference to it.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue GetValueRefOrAddDefault(in TKey key, out bool exists, out bool success)
     {
@@ -117,6 +129,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return ref _nativeMap->GetValueRefOrAddDefault(in key, out exists, out success);
     }
 
+    /// <summary>Removes <paramref name="key"/> using backward-shift deletion.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(in TKey key)
     {
@@ -126,6 +139,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return _nativeMap->Remove(in key);
     }
 
+    /// <summary>Removes all entries from the map without releasing the virtual reservation.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
@@ -151,6 +165,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
 
     #region Enumeration
 
+    /// <summary>Returns a zero-allocation ref-struct enumerator over occupied entries.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Enumerator GetEnumerator()
     {
@@ -160,6 +175,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
         return new Enumerator(_nativeMap->SlotsPtr, _nativeMap->Capacity);
     }
 
+    /// <summary>Zero-allocation enumerator over occupied <see cref="VirtualMapEntry{TKey, TValue}"/> slots.</summary>
     public ref struct Enumerator
     {
         private readonly VirtualMapEntry<TKey, TValue>* _slots;
@@ -174,6 +190,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
             _index = -1;
         }
 
+        /// <summary>Advances the enumerator to the next occupied slot.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
@@ -185,6 +202,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
             return false;
         }
 
+        /// <summary>Gets a readonly reference to the current occupied entry.</summary>
         public readonly ref readonly VirtualMapEntry<TKey, TValue> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -194,6 +212,7 @@ public sealed unsafe class VirtualMap<TKey, TValue> : IDisposable
 
     #endregion
 
+    /// <summary>Releases the virtual memory reservation and native control block.</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)

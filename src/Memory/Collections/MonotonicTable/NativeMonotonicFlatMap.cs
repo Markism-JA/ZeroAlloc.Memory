@@ -21,36 +21,42 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
 
     #region State & Metrics
 
+    /// <summary>Gets the number of active entries stored in the table.</summary>
     public readonly int Count
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _map != null ? _map->Count : 0;
     }
 
+    /// <summary>Gets the total slot capacity of the backing flat map.</summary>
     public readonly int Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _map != null ? _map->Capacity : 0;
     }
 
+    /// <summary>Gets the maximum usable key count before load-factor saturation.</summary>
     public readonly int MaxCount
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _map != null ? _map->MaxCount : 0;
     }
 
+    /// <summary>Returns <c>true</c> if the table contains zero entries.</summary>
     public readonly bool IsEmpty
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _map == null || _map->IsEmpty;
     }
 
+    /// <summary>Returns <c>true</c> if the table has reached <see cref="MaxCount"/>.</summary>
     public readonly bool IsFull
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _map != null && _map->IsFull;
     }
 
+    /// <summary>Gets the raw unmanaged pointer to the backing <see cref="NativeFlatMap{TKey, TValue}"/>.</summary>
     public readonly NativeFlatMap<TKey, MonotonicEntry<TValue>>* BackingMapPtr
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,6 +67,7 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
 
     #region Allocation & Teardown
 
+    /// <summary>Allocates a new <see cref="NativeMonotonicFlatMap{TKey, TValue}"/> sized for at least <paramref name="targetKeyCapacity"/> keys.</summary>
     public static NativeMonotonicFlatMap<TKey, TValue>* Allocate(int targetKeyCapacity = 1024)
     {
         var nativeMap = NativeFlatMap<TKey, MonotonicEntry<TValue>>.Allocate(targetKeyCapacity);
@@ -82,6 +89,7 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
         return table;
     }
 
+    /// <summary>Releases the backing native flat map and control block.</summary>
     public static void Free(NativeMonotonicFlatMap<TKey, TValue>* table)
     {
         if (table == null)
@@ -100,6 +108,7 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
 
     #region Operations
 
+    /// <summary>Attempts to retrieve the value and monotonic sequence associated with <paramref name="key"/>.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool TryGet(TKey key, out TValue value, out ulong sequence)
     {
@@ -115,9 +124,11 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
         return false;
     }
 
+    /// <summary>Determines whether <paramref name="key"/> exists in the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool ContainsKey(TKey key) => _map->ContainsKey(key);
 
+    /// <summary>Attempts to upsert <paramref name="key"/> if <paramref name="sequence"/> dominates the stored sequence.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MonotonicResult TryPut(
         TKey key,
@@ -156,9 +167,11 @@ public unsafe struct NativeMonotonicFlatMap<TKey, TValue>
         return MonotonicResult.Stale;
     }
 
+    /// <summary>Removes <paramref name="key"/> from the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(TKey key) => _map->Remove(key);
 
+    /// <summary>Clears all entries from the table.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear() => _map->Clear();
 
